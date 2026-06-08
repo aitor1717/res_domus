@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>res_domus — whatsapp hook</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:      #0B141A;
+      --surface: #111B21;
+      --header:  #202C33;
+      --msg-in:  #202C33;
+      --msg-out: #005C4B;
+      --border:  #2A373F;
+      --text:    #E9EDEF;
+      --muted:   #8696A0;
+      --dim:     #3D5160;
+      --green:   #00A884;
+      --check:   #53BDEB;
+      --orange:  #FD971F;
+      --cyan:    #66D9E8;
+      --pink:    #F92672;
+      --yellow:  #E6DB74;
+      --lgreen:  #A6E22E;
+      --mono:    'IBM Plex Mono', 'Courier New', monospace;
+      --sans:    -apple-system, 'Segoe UI', 'Helvetica Neue', sans-serif;
+    }
+
+    html, body { height: 100%; overflow: hidden; }
+    body { background: var(--bg); color: var(--text); font-family: var(--sans); }
+
+    .app { display: flex; height: 100vh; overflow: hidden; }
+
+    /* ── LEFT PANEL ── */
+    .left {
+      width: 30%;
+      min-width: 256px;
+      max-width: 340px;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+    }
+
+    .left-header {
+      background: var(--header);
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-height: 60px;
+      flex-shrink: 0;
+    }
+
+    .av {
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      flex-shrink: 0;
+      font-family: var(--mono);
+    }
+
+    .av-self {
+      width: 40px; height: 40px;
+      background: var(--green);
+      color: #0B1E17;
+      font-size: 13px;
+    }
+
+    .left-title { font-size: 16px; font-weight: 500; }
+
+    .search-row {
+      padding: 8px 12px;
+      background: var(--surface);
+      flex-shrink: 0;
+    }
+
+    .search-inner {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--header);
+      border-radius: 8px;
+      padding: 8px 12px;
+    }
+    .search-icon { color: var(--muted); font-size: 12px; font-family: var(--mono); }
+    .search-input {
+      background: none; border: none; outline: none;
+      font-size: 14px; color: var(--text); flex: 1;
+    }
+    .search-input::placeholder { color: var(--muted); }
+
+    .chat-list { overflow-y: auto; flex: 1; }
+
+    .chat-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      cursor: pointer;
+      border-bottom: 1px solid rgba(42,55,63,.5);
+      transition: background .1s;
+    }
+    .chat-row:hover { background: rgba(255,255,255,.025); }
+    .chat-row.active { background: rgba(0,168,132,.09); }
+
+    .av-rd {
+      width: 50px; height: 50px;
+      flex-shrink: 0;
+      border-radius: 50%;
+      overflow: hidden;
+    }
+
+    .av-rd svg { width: 100%; height: 100%; }
+
+    .chat-row-body { flex: 1; min-width: 0; }
+    .chat-row-name { font-size: 15px; font-weight: 500; }
+    .chat-row-preview {
+      font-size: 13px; color: var(--muted);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 2px;
+    }
+    .chat-row-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; }
+    .chat-row-time { font-size: 11px; color: var(--green); }
+    .unread {
+      background: var(--green); color: #fff;
+      font-size: 11px; font-weight: 700;
+      width: 20px; height: 20px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    /* ── RIGHT PANEL ── */
+    .right {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: var(--bg);
+      min-width: 0;
+      background-image: radial-gradient(rgba(0,168,132,.035) 1px, transparent 1px);
+      background-size: 24px 24px;
+    }
+
+    .conv-header {
+      background: var(--header);
+      display: flex;
+      align-items: center;
+      padding: 10px 16px;
+      gap: 12px;
+      min-height: 60px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .conv-av {
+      width: 40px; height: 40px;
+      border-radius: 50%;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+    .conv-av svg { width: 100%; height: 100%; }
+
+    .conv-info { flex: 1; }
+    .conv-name { font-size: 15px; font-weight: 500; }
+    .conv-status { font-size: 12px; color: var(--green); margin-top: 1px; }
+
+    .conv-actions {
+      display: flex;
+      gap: 18px;
+      color: var(--muted);
+      font-size: 14px;
+      font-family: var(--mono);
+    }
+    .conv-actions span { cursor: pointer; transition: color .15s; }
+    .conv-actions span:hover { color: var(--text); }
+
+    /* Pinned guide */
+    .pinned {
+      background: var(--header);
+      border-bottom: 1px solid var(--border);
+      padding: 7px 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      transition: background .15s;
+      flex-shrink: 0;
+    }
+    .pinned:hover { background: rgba(255,255,255,.03); }
+
+    .pin-body { flex: 1; min-width: 0; }
+    .pin-label { font-size: 11px; color: var(--green); font-family: var(--mono); letter-spacing: .04em; }
+    .pin-text {
+      font-size: 12px; color: var(--muted);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      font-family: var(--mono);
+    }
+    .pin-caret { color: var(--muted); font-size: 14px; flex-shrink: 0; }
+
+    /* Messages */
+    .msgs {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px 16px 6px;
+      display: flex;
+      flex-direction: column;
+    }
+    .msgs::-webkit-scrollbar { width: 5px; }
+    .msgs::-webkit-scrollbar-thumb { background: rgba(255,255,255,.09); border-radius: 3px; }
+
+    .date-sep { text-align: center; margin: 10px 0 6px; flex-shrink: 0; }
+    .date-sep span {
+      background: rgba(17,27,33,.85);
+      border: 1px solid rgba(42,55,63,.7);
+      padding: 3px 12px;
+      border-radius: 8px;
+      font-size: 11px;
+      color: var(--muted);
+      font-family: var(--mono);
+    }
+
+    .bw { display: flex; margin-bottom: 2px; flex-shrink: 0; }
+    .bw.out { justify-content: flex-end; }
+    .bw.in  { justify-content: flex-start; }
+
+    .bubble {
+      max-width: min(66%, 440px);
+      padding: 6px 9px 8px;
+      border-radius: 7.5px;
+    }
+    .bubble.out { background: var(--msg-out); border-bottom-right-radius: 2px; }
+    .bubble.in  { background: var(--msg-in);  border-bottom-left-radius: 2px; }
+
+    .btext { font-size: 14.5px; line-height: 1.5; color: var(--text); word-break: break-word; }
+
+    .bmeta {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 3px;
+      margin-top: 1px;
+    }
+    .btime  { font-size: 11px; color: rgba(134,150,160,.85); }
+    .bcheck { font-size: 11px; color: var(--check); }
+
+    /* Image stub */
+    .img-stub {
+      background: rgba(0,168,132,.08);
+      border: 1px solid rgba(0,168,132,.18);
+      border-radius: 6px;
+      padding: 20px 24px;
+      text-align: center;
+      margin-bottom: 2px;
+      font-family: var(--mono);
+    }
+    .img-stub-icon { font-size: 24px; color: var(--muted); margin-bottom: 5px; font-family: var(--sans); }
+    .img-stub-name { font-size: 12px; color: var(--muted); }
+    .img-stub-detail { font-size: 10px; color: var(--dim); margin-top: 3px; }
+
+    /* Parsed receipt */
+    .parsed {
+      font-family: var(--mono);
+      font-size: 12.5px;
+      line-height: 1.75;
+    }
+    .parsed-head { color: var(--green); font-size: 11px; margin-bottom: 7px; letter-spacing: .04em; }
+    .prow { display: flex; gap: 6px; align-items: baseline; }
+    .pqty  { color: var(--muted); min-width: 22px; }
+    .pname { flex: 1; color: #A8C0C0; }
+    .pprice { color: var(--orange); min-width: 60px; text-align: right; }
+    .pdiv  { color: var(--dim); font-size: 11px; margin: 3px 0; }
+    .ptot  { font-weight: 500; }
+    .palert { color: var(--yellow); font-size: 11.5px; margin-top: 5px; }
+    .pactions { margin-top: 9px; font-size: 12.5px; }
+    .pact { color: var(--green); cursor: pointer; }
+    .pact:hover { text-decoration: underline; }
+
+    /* Input area */
+    .input-area {
+      background: var(--surface);
+      padding: 10px 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .attach-btn {
+      color: var(--muted);
+      font-size: 18px;
+      cursor: pointer;
+      background: none;
+      border: none;
+      padding: 2px 5px;
+      font-family: var(--mono);
+      transition: color .15s;
+    }
+    .attach-btn:hover { color: var(--text); }
+
+    .msg-box {
+      flex: 1;
+      background: var(--header);
+      border: none;
+      border-radius: 20px;
+      padding: 10px 16px;
+      font-size: 14.5px;
+      color: var(--text);
+      outline: none;
+    }
+    .msg-box::placeholder { color: var(--muted); }
+
+    .send-btn {
+      width: 44px; height: 44px;
+      border-radius: 50%;
+      background: var(--green);
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: #fff;
+      font-family: var(--mono);
+      font-size: 15px;
+      transition: background .15s;
+      flex-shrink: 0;
+    }
+    .send-btn:hover { background: #00C49A; }
+
+    /* ── GUIDE MODAL ── */
+    .modal-bg {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.65);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .modal-bg.open { display: flex; }
+
+    .guide {
+      background: var(--header);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 22px 24px 18px;
+      max-width: 400px;
+      width: 100%;
+      font-family: var(--mono);
+    }
+
+    .guide-title {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      color: var(--green);
+      margin-bottom: 16px;
+    }
+
+    .guide-section { margin-bottom: 14px; }
+
+    .guide-section-label {
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--muted);
+      margin-bottom: 7px;
+    }
+
+    .guide-ex {
+      font-size: 12px;
+      color: var(--text);
+      background: rgba(255,255,255,.04);
+      border-radius: 4px;
+      padding: 5px 9px;
+      margin-bottom: 4px;
+      line-height: 1.5;
+    }
+    .guide-ex .q { color: var(--orange); }
+    .guide-ex .k { color: var(--cyan); }
+    .guide-ex .r { color: var(--pink); }
+
+    .guide-note {
+      font-size: 10px;
+      color: var(--muted);
+      margin-top: 5px;
+      line-height: 1.5;
+    }
+    .guide-note .req { color: var(--pink); }
+    .guide-note .opt { color: var(--dim); }
+
+    .guide-required {
+      background: rgba(249,38,114,.07);
+      border: 1px solid rgba(249,38,114,.18);
+      border-radius: 5px;
+      padding: 10px 12px;
+      margin-bottom: 14px;
+      font-size: 11px;
+      line-height: 1.7;
+    }
+    .req-label { color: var(--pink); font-size: 9px; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 5px; }
+    .req-field { color: var(--text); }
+    .req-field span { color: var(--orange); }
+    .opt-field { color: var(--dim); }
+    .opt-field span { color: var(--muted); }
+
+    .guide-close {
+      text-align: right;
+      font-size: 11px;
+      color: var(--green);
+      cursor: pointer;
+      margin-top: 12px;
+      padding-top: 10px;
+      border-top: 1px solid var(--border);
+    }
+    .guide-close:hover { text-decoration: underline; }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 620px) { .left { display: none; } }
+    @media (max-width: 400px) { .bubble { max-width: 86%; } .btext { font-size: 13.5px; } }
+  </style>
+</head>
+<body>
+
+  <!-- Guide Modal -->
+  <div class="modal-bg" id="modal" onclick="if(event.target===this)closeGuide()">
+    <div class="guide">
+      <div class="guide-title">formatos aceptados · res_domus</div>
+
+      <div class="guide-required">
+        <div class="req-label">campos requeridos para registrar</div>
+        <div class="req-field"><span>item</span> — nombre del producto</div>
+        <div class="req-field"><span>precio total</span> — lo que pagaste</div>
+        <div class="opt-field"><span>cantidad</span> — opcional (default: 1)</div>
+        <div class="opt-field"><span>tienda</span> — opcional</div>
+        <div class="opt-field"><span>fecha</span> — opcional (default: hoy)</div>
+      </div>
+
+      <div class="guide-section">
+        <div class="guide-section-label">texto libre (minimo: item + precio)</div>
+        <div class="guide-ex">pollo <span class="q">18</span></div>
+        <div class="guide-ex"><span class="q">2</span> pollos <span class="q">18</span> metro</div>
+        <div class="guide-ex">aceite <span class="q">7.50</span> tottus ayer</div>
+        <div class="guide-ex">huevos x<span class="q">30</span> <span class="q">12.90</span> Wong lunes</div>
+        <div class="guide-note">
+          fechas aceptadas: <span class="k">hoy · ayer · lunes · DD/MM · DD/MM/YYYY</span>
+        </div>
+      </div>
+
+      <div class="guide-section">
+        <div class="guide-section-label">foto de recibo (PedidosYa, Metro, Tottus, manuscrito)</div>
+        <div class="guide-ex">adjunta la imagen — <span class="k">parse automatico con claude</span></div>
+        <div class="guide-note">varios screenshots del mismo pedido se procesan juntos</div>
+      </div>
+
+      <div class="guide-section">
+        <div class="guide-section-label">consultas en lenguaje natural</div>
+        <div class="guide-ex">cuanto gaste <span class="k">esta semana</span></div>
+        <div class="guide-ex">precio del pollo <span class="k">en metro vs pedidosya</span></div>
+        <div class="guide-ex">que me falta comprar</div>
+        <div class="guide-ex">cuanto voy en <span class="k">presupuesto junio</span></div>
+      </div>
+
+      <div class="guide-close" onclick="closeGuide()">cerrar</div>
+    </div>
+  </div>
+
+  <div class="app">
+
+    <!-- LEFT -->
+    <div class="left">
+      <div class="left-header">
+        <div class="av av-self">A</div>
+        <div class="left-title">res_domus</div>
+      </div>
+      <div class="search-row">
+        <div class="search-inner">
+          <span class="search-icon">/ buscar</span>
+          <input class="search-input" type="text" placeholder="chats">
+        </div>
+      </div>
+      <div class="chat-list">
+        <div class="chat-row active">
+          <div class="av-rd">
+            <!-- res_domus logo SVG -->
+            <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="50" cy="50" r="50" fill="#0D1F1A"/>
+              <circle cx="50" cy="50" r="46" fill="none" stroke="#00A884" stroke-width="1.5" stroke-dasharray="6 3"/>
+              <text x="50" y="56" text-anchor="middle"
+                font-family="'IBM Plex Mono', 'Courier New', monospace"
+                font-size="26" font-weight="500" fill="#E9EDEF" letter-spacing="-0.5">rd</text>
+              <text x="50" y="70" text-anchor="middle"
+                font-family="'IBM Plex Mono', 'Courier New', monospace"
+                font-size="8" font-weight="400" fill="#00A884" letter-spacing="1">domus_01</text>
+            </svg>
+          </div>
+          <div class="chat-row-body">
+            <div class="chat-row-name">res_domus</div>
+            <div class="chat-row-preview">[ok] 4 items guardados · S/.487.30</div>
+          </div>
+          <div class="chat-row-meta">
+            <div class="chat-row-time">11:43</div>
+            <div class="unread">3</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT -->
+    <div class="right">
+      <div class="conv-header">
+        <div class="conv-av">
+          <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="50" cy="50" r="50" fill="#0D1F1A"/>
+            <circle cx="50" cy="50" r="46" fill="none" stroke="#00A884" stroke-width="1.5" stroke-dasharray="6 3"/>
+            <text x="50" y="56" text-anchor="middle"
+              font-family="'IBM Plex Mono', 'Courier New', monospace"
+              font-size="26" font-weight="500" fill="#E9EDEF" letter-spacing="-0.5">rd</text>
+            <text x="50" y="70" text-anchor="middle"
+              font-family="'IBM Plex Mono', 'Courier New', monospace"
+              font-size="8" font-weight="400" fill="#00A884" letter-spacing="1">domus_01</text>
+          </svg>
+        </div>
+        <div class="conv-info">
+          <div class="conv-name">res_domus</div>
+          <div class="conv-status">en linea</div>
+        </div>
+        <div class="conv-actions">
+          <span title="buscar">[/]</span>
+          <span title="menu">[...]</span>
+        </div>
+      </div>
+
+      <!-- Pinned -->
+      <div class="pinned" onclick="openGuide()">
+        <div class="pin-body">
+          <div class="pin-label">formatos · campos requeridos</div>
+          <div class="pin-text">item + precio total — texto libre, foto, consulta · toca para ver</div>
+        </div>
+        <div class="pin-caret">›</div>
+      </div>
+
+      <!-- Messages -->
+      <div class="msgs" id="msgs">
+
+        <!-- TODAY -->
+        <div class="date-sep"><span>hoy · 7 jun 2026</span></div>
+
+        <!-- Receipt photo -->
+        <div class="bw out">
+          <div class="bubble out">
+            <div class="img-stub">
+              <div class="img-stub-icon">[img]</div>
+              <div class="img-stub-name">pedidosya_jun07.jpg</div>
+              <div class="img-stub-detail">1.2 MB · PedidosYa Market - San Borja</div>
+            </div>
+            <div class="bmeta"><span class="btime">11:42</span><span class="bcheck">vv</span></div>
+          </div>
+        </div>
+
+        <!-- Parsed -->
+        <div class="bw in">
+          <div class="bubble in">
+            <div class="parsed">
+              <div class="parsed-head">PEDIDOSYA · 07 JUN 2026</div>
+              <div class="prow"><span class="pqty">2x</span><span class="pname">Leche Gloria UHT</span><span class="pprice">S/. 6.40</span></div>
+              <div class="prow"><span class="pqty">1x</span><span class="pname">Pollo entero</span><span class="pprice">S/.18.90</span></div>
+              <div class="prow"><span class="pqty">3x</span><span class="pname">Huevos (30u)</span><span class="pprice">S/.12.90</span></div>
+              <div class="prow"><span class="pqty">1x</span><span class="pname">Aceite Primor 1L</span><span class="pprice">S/. 7.50</span></div>
+              <div class="pdiv">────────────────────────────</div>
+              <div class="prow ptot"><span class="pqty"></span><span class="pname">TOTAL</span><span class="pprice">S/.45.70</span></div>
+              <div class="palert">[!] aceite: S/.7.50 vs avg S/.6.40 (z=+2.1)</div>
+              <div class="pactions">confirmar? <span class="pact">si</span> · <span class="pact">editar</span> · <span class="pact">cancelar</span></div>
+            </div>
+            <div class="bmeta"><span class="btime">11:42</span></div>
+          </div>
+        </div>
+
+        <div class="bw out">
+          <div class="bubble out">
+            <div class="btext">si</div>
+            <div class="bmeta"><span class="btime">11:43</span><span class="bcheck">vv</span></div>
+          </div>
+        </div>
+
+        <div class="bw in">
+          <div class="bubble in">
+            <div class="btext">[ok] 4 items guardados · gasto mes: <span style="color:var(--orange)">S/.487.30</span> / S/.620 (78.6%)</div>
+            <div class="bmeta"><span class="btime">11:43</span></div>
+          </div>
+        </div>
+
+        <!-- YESTERDAY -->
+        <div class="date-sep"><span>ayer · 6 jun 2026</span></div>
+
+        <div class="bw out">
+          <div class="bubble out">
+            <div class="btext">2 pollos 18 soles metro ayer</div>
+            <div class="bmeta"><span class="btime">9:15</span><span class="bcheck">vv</span></div>
+          </div>
+        </div>
+
+        <div class="bw in">
+          <div class="bubble in">
+            <div class="parsed">
+              <div class="parsed-head">TEXTO LIBRE · 05 JUN 2026</div>
+              <div class="prow"><span class="pqty">2x</span><span class="pname">Pollo entero · Metro</span><span class="pprice">S/. 9.00 c/u</span></div>
+              <div class="pactions" style="margin-top:10px">confirmar? <span class="pact">si</span> · <span class="pact">editar</span> · <span class="pact">cancelar</span></div>
+            </div>
+            <div class="bmeta"><span class="btime">9:15</span></div>
+          </div>
+        </div>
+
+        <div class="bw out">
+          <div class="bubble out">
+            <div class="btext">si</div>
+            <div class="bmeta"><span class="btime">9:16</span><span class="bcheck">vv</span></div>
+          </div>
+        </div>
+
+        <div class="bw in">
+          <div class="bubble in">
+            <div class="btext">[ok] guardado · pollo ahora <span style="color:var(--orange)">S/.9.00/u</span> <span style="color:var(--lgreen)">-5%</span> vs ultimo (S/.9.45)</div>
+            <div class="bmeta"><span class="btime">9:16</span></div>
+          </div>
+        </div>
+
+        <!-- JUN 4 -->
+        <div class="date-sep"><span>4 jun 2026</span></div>
+
+        <div class="bw out">
+          <div class="bubble out">
+            <div class="btext">cuanto gaste esta semana</div>
+            <div class="bmeta"><span class="btime">8:30</span><span class="bcheck">vv</span></div>
+          </div>
+        </div>
+
+        <div class="bw in">
+          <div class="bubble in">
+            <div class="parsed">
+              <div class="parsed-head">SEMANA 2-6 JUN 2026</div>
+              <div class="prow"><span class="pname">Abarrotes</span><span class="pprice">S/. 89.40</span></div>
+              <div class="prow"><span class="pname">Carnes</span><span class="pprice">S/. 36.70</span></div>
+              <div class="prow"><span class="pname">Limpieza</span><span class="pprice">S/. 12.80</span></div>
+              <div class="pdiv">────────────────────────────</div>
+              <div class="prow ptot"><span class="pname">Total</span><span class="pprice">S/.138.90</span></div>
+              <div class="palert" style="color:var(--cyan);margin-top:6px">vs sem. pasada: <span style="color:var(--pink)">+S/.22.10 (+19%)</span></div>
+            </div>
+            <div class="bmeta"><span class="btime">8:30</span></div>
+          </div>
+        </div>
+
+        <!-- Basket recommendation -->
+        <div class="bw out">
+          <div class="bubble out">
+            <div class="btext">arma mi lista para esta semana</div>
+            <div class="bmeta"><span class="btime">7:50</span><span class="bcheck">vv</span></div>
+          </div>
+        </div>
+
+        <div class="bw in">
+          <div class="bubble in">
+            <div class="parsed">
+              <div class="parsed-head">LISTA · 7 JUN 2026</div>
+              <div style="color:var(--cyan);font-size:11px;margin-bottom:3px">pedidosya market</div>
+              <div class="prow"><span class="pname">aceite primor 1L</span><span class="pprice">~S/.7.50</span></div>
+              <div class="prow"><span class="pname">leche gloria 6x390g</span><span class="pprice">~S/.23.90</span></div>
+              <div class="prow"><span class="pname">arroz costenho 1kg</span><span class="pprice">~S/.4.20</span></div>
+              <div class="pdiv" style="margin:3px 0 5px">subtotal ~S/.35.60</div>
+              <div style="color:var(--lgreen);font-size:11px;margin-bottom:3px">tottus (mejor precio)</div>
+              <div class="prow"><span class="pname">huevos pardos 30u</span><span class="pprice">~S/.18.90</span></div>
+              <div class="prow"><span class="pname">papa yungay 2kg</span><span class="pprice">~S/.5.80</span></div>
+              <div class="pdiv" style="margin:3px 0 5px">subtotal ~S/.24.70</div>
+              <div class="prow ptot"><span class="pname">total estimado</span><span class="pprice">~S/.60.30</span></div>
+            </div>
+            <div class="bmeta"><span class="btime">7:50</span></div>
+          </div>
+        </div>
+
+        <!-- Ambiguous -->
+        <div class="bw out">
+          <div class="bubble out">
+            <div class="btext">jabon</div>
+            <div class="bmeta"><span class="btime">7:45</span><span class="bcheck">vv</span></div>
+          </div>
+        </div>
+
+        <div class="bw in">
+          <div class="bubble in">
+            <div class="btext">falta el precio total para registrar el jabon<br><br><span style="color:var(--muted);font-style:italic">ej: jabon Dove 2u 8.50 tottus</span></div>
+            <div class="bmeta"><span class="btime">7:45</span></div>
+          </div>
+        </div>
+
+      </div><!-- /msgs -->
+
+      <!-- Input -->
+      <div class="input-area">
+        <button class="attach-btn" title="adjuntar">[+]</button>
+        <input class="msg-box" id="msgIn" type="text" placeholder="escribe un mensaje" onkeydown="sendMsg(event)">
+        <button class="send-btn" onclick="sendMsg({key:'Enter'})">&gt;</button>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    function openGuide()  { document.getElementById('modal').classList.add('open'); }
+    function closeGuide() { document.getElementById('modal').classList.remove('open'); }
+
+    document.getElementById('msgs').scrollTop = document.getElementById('msgs').scrollHeight;
+
+    const mockReplies = [
+      // basket recommendation
+      `<div style="font-family:var(--mono);font-size:12.5px;line-height:1.75">` +
+      `<div style="color:var(--green);font-size:11px;margin-bottom:6px">LISTA · ${new Date().toLocaleDateString('es-PE',{day:'2-digit',month:'short',year:'numeric'}).toUpperCase()}</div>` +
+      `<div style="color:var(--cyan);font-size:11px;margin-bottom:3px">pedidosya market</div>` +
+      `<div style="display:flex;gap:6px"><span style="flex:1;color:#A8C0C0">aceite primor 1L</span><span style="color:var(--orange)">~S/.7.50</span></div>` +
+      `<div style="display:flex;gap:6px"><span style="flex:1;color:#A8C0C0">leche gloria 6×</span><span style="color:var(--orange)">~S/.23.90</span></div>` +
+      `<div style="display:flex;gap:6px"><span style="flex:1;color:#A8C0C0">arroz costenho 1kg</span><span style="color:var(--orange)">~S/.4.20</span></div>` +
+      `<div style="color:var(--dim);margin:2px 0 5px">subtotal ~S/.35.60</div>` +
+      `<div style="color:var(--lgreen);font-size:11px;margin-bottom:3px">tottus (mejor precio)</div>` +
+      `<div style="display:flex;gap:6px"><span style="flex:1;color:#A8C0C0">huevos pardos 30u</span><span style="color:var(--orange)">~S/.18.90</span></div>` +
+      `<div style="display:flex;gap:6px"><span style="flex:1;color:#A8C0C0">papa yungay 2kg</span><span style="color:var(--orange)">~S/.5.80</span></div>` +
+      `<div style="margin-top:5px;padding-top:5px;border-top:1px solid var(--border);display:flex;gap:6px"><span style="flex:1">total estimado</span><span style="color:var(--orange);font-weight:500">~S/.60.30</span></div>` +
+      `</div>`,
+      'falta el precio total para registrar ese item\n\nej: [item] [precio] [tienda?] [fecha?]',
+      '[ok] registrado · gasto mes actualizado.',
+      'precio promedio en 90d: S/.6.40 · mas barato en tottus (S/.6.20) vs pedidosya (S/.7.50)',
+      'no encontre compras con ese termino en los ultimos 90d',
+      'esta semana: S/.138.90 · -12% vs semana pasada',
+      'pollo entero · metro S/.8.90/u vs pedidosya S/.9.80/u · ahorra S/.0.90 comprando en metro',
+    ];
+    let ri = 0;
+
+    function sendMsg(e) {
+      if (e.key !== 'Enter') return;
+      const inp = document.getElementById('msgIn');
+      const val = inp.value.trim();
+      if (!val) return;
+      const box = document.getElementById('msgs');
+
+      const bw = document.createElement('div');
+      bw.className = 'bw out';
+      bw.innerHTML = `<div class="bubble out"><div class="btext">${esc(val)}</div><div class="bmeta"><span class="btime">${now()}</span><span class="bcheck">vv</span></div></div>`;
+      box.appendChild(bw);
+      inp.value = '';
+      box.scrollTop = box.scrollHeight;
+
+      setTimeout(() => {
+        const br = document.createElement('div');
+        br.className = 'bw in';
+        const txt = mockReplies[ri++ % mockReplies.length].replace(/\n/g, '<br>');
+        br.innerHTML = `<div class="bubble in"><div class="btext">${txt}</div><div class="bmeta"><span class="btime">${now()}</span></div></div>`;
+        box.appendChild(br);
+        box.scrollTop = box.scrollHeight;
+      }, 380);
+    }
+
+    function now() {
+      const d = new Date();
+      return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+    }
+
+    function esc(s) {
+      return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+  </script>
+</body>
+</html>

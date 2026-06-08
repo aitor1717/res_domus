@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>res_domus</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #1E2127; --surface: #272B33; --border: #343842;
+      --text: #F8F8F2; --muted: #75715E; --orange: #FD971F; --cyan: #66D9E8;
+      --pink: #F92672; --green: #A6E22E;
+      --mono: 'IBM Plex Mono', monospace;
+    }
+    body { background: var(--bg); color: var(--text); font-family: var(--mono); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 32px 20px; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 48px 40px; max-width: 560px; width: 100%; }
+    .wordmark { font-size: 20px; font-weight: 500; margin-bottom: 8px; }
+    .wordmark em { color: var(--orange); font-style: normal; }
+    .tagline { font-size: 10px; color: var(--muted); letter-spacing: .06em; margin-bottom: 36px; }
+    .desc { font-size: 12px; color: var(--muted); line-height: 1.9; margin-bottom: 36px; }
+    .desc strong { color: var(--text); }
+    .links { display: flex; flex-direction: column; gap: 10px; }
+    .link-btn {
+      display: block; padding: 12px 18px; border-radius: 5px; text-decoration: none;
+      font-size: 11px; letter-spacing: .04em; transition: background .15s;
+    }
+    .link-dash  { border: 1px solid rgba(253,151,31,.35); color: var(--orange); }
+    .link-dash:hover  { background: rgba(253,151,31,.08); }
+    .link-wa    { border: 1px solid rgba(102,217,232,.35); color: var(--cyan); }
+    .link-wa:hover    { background: rgba(102,217,232,.08); }
+    .link-repo  { border: 1px solid rgba(117,113,94,.3); color: var(--muted); }
+    .link-repo:hover  { background: rgba(117,113,94,.06); }
+    .stack { margin-top: 36px; font-size: 9px; color: var(--muted); line-height: 2; }
+    .stack span { color: var(--text); }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="wordmark">res<em>_</em>domus</div>
+    <div class="tagline">HOUSEHOLD GROCERY TRACKER · LIMA, PE</div>
+    <div class="desc">
+      Receipt screenshots → <strong>Claude Sonnet</strong> parses them → editable review table →
+      <strong>SQLite DB</strong> → live dashboard with spending trends, inventory estimates,
+      price history, and anomaly alerts. <strong>NL chat</strong> interface queries the DB.
+    </div>
+    <div class="links">
+      <a class="link-btn link-dash" href="mockup_dashboard.html">→ dashboard mockup</a>
+      <a class="link-btn link-wa"   href="mockup_whatsapp.html">→ whatsapp hook mockup</a>
+      <a class="link-btn link-repo" href="https://github.com/aitor1717/res_domus">→ github repo</a>
+    </div>
+    <div class="stack">
+      stack: <span>Flask</span> · <span>SQLite</span> · <span>Anthropic API</span> · <span>Chart.js 4</span> · <span>Vanilla JS</span><br>
+      deploy: <span>gunicorn</span> · <span>Docker</span> · <span>home network + PWA</span>
+    </div>
+  </div>
+</body>
+</html>

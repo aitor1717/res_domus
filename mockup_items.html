@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>res_domus — library</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#1E2127;--surface:#272B33;--surface2:#2E323C;--border:#343842;
+  --text:#F8F8F2;--muted:#75715E;--dim:#454158;--dim2:#6B7585;
+  --pink:#F92672;--cyan:#66D9E8;--green:#A6E22E;--yellow:#E6DB74;
+  --purple:#AE81FF;--orange:#FD971F;
+  --sans:'Futura','Century Gothic','Trebuchet MS',sans-serif;
+  --mono:'IBM Plex Mono','Courier New',monospace;
+}
+html,body{height:100%}
+body{background:var(--bg);color:var(--text);font-family:var(--sans)}
+@media(min-width:641px){html,body{overflow:hidden}.app{display:flex;flex-direction:column;height:100vh}.main{flex:1;overflow-y:auto}}
+@media(max-width:640px){.app{display:flex;flex-direction:column;min-height:100vh}.main{flex:1}}
+
+.topbar{display:flex;align-items:center;flex-wrap:wrap;padding:7px 20px;background:#14171C;border-bottom:1px solid rgba(52,56,66,.7);gap:8px 12px;min-height:52px;flex-shrink:0;z-index:100}
+.wordmark{font-family:var(--mono);font-size:12px;font-weight:500;letter-spacing:.03em;user-select:none;text-decoration:none;color:var(--text)}
+.wordmark em{color:var(--orange);font-style:normal}
+.top-spacer{flex:1;min-width:8px}
+.nav-btns{display:flex;gap:4px;flex-shrink:0}
+.top-sep{color:var(--border);font-size:15px;user-select:none}
+.tab-group{display:flex;gap:3px;flex-shrink:0}
+.tab{font-family:var(--mono);font-size:9px;padding:4px 9px;border-radius:3px;cursor:pointer;color:var(--dim2);border:1px solid transparent;background:none;transition:all .15s;white-space:nowrap}
+.tab:hover{color:var(--muted)}
+.lang-btn.active{color:var(--cyan);background:rgba(102,217,232,.08);border-color:rgba(102,217,232,.22)}
+.nb{font-family:var(--mono);font-size:9px;letter-spacing:.05em;padding:4px 10px;border-radius:3px;border:1px solid;cursor:pointer;background:none;transition:background .15s;white-space:nowrap;text-decoration:none;display:inline-block;line-height:1.6}
+.nb-home{color:var(--pink);border-color:rgba(249,38,114,.28)}
+.nb-home:hover{background:rgba(249,38,114,.1)}
+.nb-up{color:var(--orange);border-color:rgba(253,151,31,.28)}
+.nb-up:hover{background:rgba(253,151,31,.1)}
+.nb-lib{color:var(--cyan);border-color:rgba(102,217,232,.28)}
+.nb-lib:hover,.nb-lib.active{background:rgba(102,217,232,.1)}
+.nb-lib.active{border-color:rgba(102,217,232,.55)}
+.nb-set{color:var(--purple);border-color:rgba(174,129,255,.28)}
+.nb-set:hover{background:rgba(174,129,255,.1)}
+
+.main{padding:18px 22px 56px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:14px}
+.card-label{font-family:var(--mono);font-size:9px;letter-spacing:.08em;color:var(--muted);margin-bottom:11px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+
+/* search */
+.search-row{display:flex;gap:8px;align-items:center;margin-bottom:12px}
+.search-input{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:7px 11px;font-family:var(--mono);font-size:11px;color:var(--text);outline:none;transition:border-color .15s}
+.search-input:focus{border-color:var(--cyan)}
+.search-input::placeholder{color:var(--dim)}
+.btn-new{font-family:var(--mono);font-size:9px;letter-spacing:.04em;padding:7px 13px;border-radius:4px;background:rgba(102,217,232,.08);border:1px solid rgba(102,217,232,.25);color:var(--cyan);cursor:pointer;white-space:nowrap;transition:background .15s}
+.btn-new:hover{background:rgba(102,217,232,.16)}
+
+/* table */
+table{width:100%;border-collapse:collapse;table-layout:fixed}
+col.c-name{width:auto}
+col.c-unit{width:44px}
+col.c-cat {width:100px}
+col.c-sub {width:100px}
+col.c-syn {width:auto}
+col.c-tags{width:70px}
+col.c-act {width:52px}
+th{font-family:var(--mono);font-size:9px;letter-spacing:.07em;color:var(--dim2);text-align:left;padding:0 8px 7px 0;border-bottom:1px solid var(--border);white-space:nowrap;position:sticky;top:0;background:var(--surface)}
+th:last-child{padding-right:0;text-align:right}
+td{padding:6px 8px 6px 0;border-bottom:1px solid rgba(52,56,66,.4);font-family:var(--mono);font-size:11px;color:var(--muted);vertical-align:middle}
+td:last-child{padding-right:0}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(255,255,255,.018)}
+.td-name{color:var(--text);font-size:12px;font-family:var(--sans)}
+.td-cat{color:var(--orange);font-size:10px}
+.td-sub{font-size:10px}
+.td-syn{font-size:9px;color:var(--dim2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tag{display:inline-block;font-size:8px;padding:1px 5px;border-radius:2px;background:rgba(174,129,255,.1);border:1px solid rgba(174,129,255,.2);color:var(--purple);margin-right:3px}
+.act-btns{display:flex;gap:5px;justify-content:flex-end}
+.act-btn{font-family:var(--mono);font-size:10px;background:none;border:none;cursor:pointer;color:var(--dim2);padding:2px 4px;border-radius:2px;transition:color .12s,background .12s}
+.act-btn:hover{color:var(--text);background:rgba(255,255,255,.06)}
+
+/* modal overlay */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(2px);z-index:200;display:none;align-items:center;justify-content:center;padding:20px}
+.overlay.open{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:20px;width:100%;max-width:500px;max-height:90vh;overflow-y:auto;animation:fadeUp .2s ease both}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.modal-title{font-family:var(--mono);font-size:10px;letter-spacing:.06em;color:var(--muted);margin-bottom:16px;display:flex;justify-content:space-between;align-items:center}
+.close-btn{font-size:14px;cursor:pointer;color:var(--dim2);background:none;border:none;line-height:1;transition:color .12s}
+.close-btn:hover{color:var(--text)}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px}
+.form-grid .full{grid-column:1/-1}
+.field{display:flex;flex-direction:column;gap:5px}
+.field label{font-family:var(--mono);font-size:9px;letter-spacing:.05em;color:var(--dim2)}
+.finput{background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:7px 10px;font-family:var(--mono);font-size:11px;color:var(--text);outline:none;transition:border-color .15s;width:100%}
+.finput:focus{border-color:var(--cyan)}
+.modal-footer{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;padding-top:12px;border-top:1px solid var(--border)}
+.btn-save{font-family:var(--mono);font-size:10px;padding:7px 16px;border-radius:4px;background:rgba(166,226,46,.1);border:1px solid rgba(166,226,46,.28);color:var(--green);cursor:pointer;transition:background .15s}
+.btn-save:hover{background:rgba(166,226,46,.18)}
+.btn-cancel{font-family:var(--mono);font-size:10px;padding:7px 14px;border-radius:4px;background:none;border:1px solid rgba(117,113,94,.25);color:var(--dim2);cursor:pointer;transition:background .15s}
+.btn-cancel:hover{background:rgba(117,113,94,.08)}
+
+.count-badge{font-family:var(--mono);font-size:9px;color:var(--dim2);font-weight:400}
+</style>
+</head>
+<body>
+<div class="app">
+
+<header class="topbar">
+  <a href="mockup_dashboard.html" class="wordmark">res<em>_</em>domus</a>
+  <div class="top-spacer"></div>
+  <div class="nav-btns">
+    <a href="mockup_dashboard.html" class="nb nb-home">dashboard</a>
+    <a href="mockup_upload.html"    class="nb nb-up">upload</a>
+    <a href="mockup_items.html"     class="nb nb-lib active">library</a>
+    <a href="mockup_settings.html"  class="nb nb-set">settings</a>
+  </div>
+  <div class="top-sep">|</div>
+  <div class="tab-group">
+    <div class="tab lang-btn" data-lang="es" onclick="setLang('es')">ES</div>
+    <div class="tab lang-btn" data-lang="en" onclick="setLang('en')">EN</div>
+  </div>
+</header>
+
+<main class="main">
+  <div class="card">
+    <div class="card-label">
+      <span class="i18n" data-en="item library" data-es="biblioteca de items">biblioteca de items</span> <span class="count-badge">· 62 items</span>
+    </div>
+    <div class="search-row">
+      <input class="search-input" placeholder="buscar por nombre, sinónimo, categoría…" id="searchIn" oninput="filterTable()">
+      <button class="btn-new" onclick="openModal()"><span class="i18n" data-en="+ new item" data-es="+ nuevo item">+ nuevo item</span></button>
+    </div>
+    <div style="overflow-x:auto">
+      <table id="libTable">
+        <colgroup>
+          <col class="c-name"><col class="c-unit"><col class="c-cat">
+          <col class="c-sub"><col class="c-syn"><col class="c-tags"><col class="c-act">
+        </colgroup>
+        <thead>
+          <tr>
+            <th class="i18n" data-en="NAME" data-es="NOMBRE">NOMBRE</th><th>UND</th><th class="i18n" data-en="CATEGORY" data-es="CATEGORÍA">CATEGORÍA</th>
+            <th class="i18n" data-en="SUBCATEGORY" data-es="SUBCATEGORÍA">SUBCATEGORÍA</th><th class="i18n" data-en="SYNONYMS" data-es="SINÓNIMOS">SINÓNIMOS</th><th>TAGS</th><th></th>
+          </tr>
+        </thead>
+        <tbody id="tbody">
+        </tbody>
+      </table>
+    </div>
+  </div>
+</main>
+</div>
+
+<!-- EDIT MODAL -->
+<div class="overlay" id="overlay" onclick="maybeClose(event)">
+  <div class="modal" id="modal">
+    <div class="modal-title">
+      <span id="modal-title-text" class="i18n" data-en="NEW ITEM" data-es="NUEVO ITEM">NUEVO ITEM</span>
+      <button class="close-btn" onclick="closeModal()">✕</button>
+    </div>
+    <div class="form-grid">
+      <div class="field">
+        <label>ID</label>
+        <input class="finput" id="f-id" placeholder="leche_gloria_uht">
+      </div>
+      <div class="field">
+        <label>NOMBRE</label>
+        <input class="finput" id="f-item" placeholder="Leche Gloria UHT">
+      </div>
+      <div class="field">
+        <label>UNIDAD</label>
+        <input class="finput" id="f-unit" placeholder="L">
+      </div>
+      <div class="field">
+        <label>CATEGORÍA</label>
+        <input class="finput" id="f-cat" placeholder="Lácteos">
+      </div>
+      <div class="field">
+        <label>SUBCATEGORÍA</label>
+        <input class="finput" id="f-sub" placeholder="Leche">
+      </div>
+      <div class="field">
+        <label>TAGS</label>
+        <input class="finput" id="f-tags" placeholder="staple, frecuente">
+      </div>
+      <div class="field full">
+        <label>SINÓNIMOS (separados por coma)</label>
+        <input class="finput" id="f-syn" placeholder="leche gloria, gloria, leche entera">
+      </div>
+      <div class="field full">
+        <label>NOTAS</label>
+        <input class="finput" id="f-notes" placeholder="notas opcionales…">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel i18n" data-en="cancel" data-es="cancelar" onclick="closeModal()">cancelar</button>
+      <button class="btn-save i18n" data-en="save" data-es="guardar" onclick="closeModal()">guardar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const ITEMS = [
+  {id:'leche_gloria_uht',   item:'Leche Gloria UHT',    unit:'L',  cat:'Lácteos',    sub:'Leche',        syn:'leche gloria, gloria, leche entera',    tags:'staple'},
+  {id:'aceite_primor',      item:'Aceite Primor',        unit:'L',  cat:'Abarrotes',  sub:'Aceites',      syn:'aceite, aceite primor, aceite vegetal',  tags:'staple'},
+  {id:'arroz_costenho',     item:'Arroz Costenho',       unit:'kg', cat:'Abarrotes',  sub:'Arroz',        syn:'arroz, costenho, arroz largo',           tags:'staple'},
+  {id:'huevos_pardos_30u',  item:'Huevos Pardos 30u',    unit:'u',  cat:'Huevos',     sub:'Huevos',       syn:'huevos, huevo pardo, huevos pardos',     tags:''},
+  {id:'pollo_entero',       item:'Pollo Entero',         unit:'kg', cat:'Carnes',     sub:'Aves',         syn:'pollo, pollo entero, pollo fresco',      tags:''},
+  {id:'papa_amarilla',      item:'Papa Amarilla',        unit:'kg', cat:'Verduras',   sub:'Tubérculos',   syn:'papa, papa amarilla, papas',             tags:''},
+  {id:'cebolla_roja',       item:'Cebolla Roja',         unit:'kg', cat:'Verduras',   sub:'Hortalizas',   syn:'cebolla, cebolla roja',                  tags:''},
+  {id:'tomate',             item:'Tomate',               unit:'kg', cat:'Verduras',   sub:'Hortalizas',   syn:'tomate, tomates, jitomate',              tags:''},
+  {id:'detergente_ariel',   item:'Detergente Ariel',     unit:'kg', cat:'Limpieza',   sub:'Detergentes',  syn:'ariel, detergente, ariel polvo',         tags:''},
+  {id:'jabon_dove',         item:'Jabón Dove',           unit:'u',  cat:'Higiene',    sub:'Jabones',      syn:'dove, jabón dove, jabón',                tags:''},
+  {id:'azucar_rubia',       item:'Azúcar Rubia',         unit:'kg', cat:'Abarrotes',  sub:'Azúcar',       syn:'azúcar, azucar, azucar rubia',           tags:'staple'},
+  {id:'pan_molde',          item:'Pan Molde',             unit:'u',  cat:'Panadería',  sub:'Pan',          syn:'pan molde, molde, pan lactal',           tags:''},
+];
+
+function renderItems(list) {
+  const tbody = document.getElementById('tbody');
+  tbody.innerHTML = '';
+  list.forEach((it, i) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><span class="td-name">${it.item}</span><br><span style="font-size:9px;color:var(--dim2)">${it.id}</span></td>
+      <td>${it.unit}</td>
+      <td><span class="td-cat">${it.cat}</span></td>
+      <td class="td-sub">${it.sub}</td>
+      <td><span class="td-syn">${it.syn}</span></td>
+      <td>${it.tags ? `<span class="tag">${it.tags}</span>` : ''}</td>
+      <td><div class="act-btns">
+        <button class="act-btn" onclick="editItem(${i})" title="editar">✎</button>
+        <button class="act-btn" style="color:var(--pink)" title="eliminar">×</button>
+      </div></td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+function filterTable() {
+  const q = document.getElementById('searchIn').value.toLowerCase();
+  const filtered = q ? ITEMS.filter(it =>
+    it.item.toLowerCase().includes(q) ||
+    it.id.toLowerCase().includes(q) ||
+    it.cat.toLowerCase().includes(q) ||
+    it.syn.toLowerCase().includes(q)
+  ) : ITEMS;
+  renderItems(filtered);
+}
+
+function openModal(data) {
+  const mt = document.getElementById('modal-title-text');
+  mt.textContent = data ? (lang === 'en' ? 'EDIT ITEM' : 'EDITAR ITEM') : (lang === 'en' ? 'NEW ITEM' : 'NUEVO ITEM');
+  ['id','item','unit','cat','sub','syn','tags','notes'].forEach(f => {
+    const el = document.getElementById('f-'+f);
+    if (el) el.value = data ? (data[f] || '') : '';
+  });
+  document.getElementById('overlay').classList.add('open');
+}
+
+function editItem(i) { openModal(ITEMS[i]); }
+function closeModal() { document.getElementById('overlay').classList.remove('open'); }
+function maybeClose(e) { if (e.target === document.getElementById('overlay')) closeModal(); }
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+/* ── i18n ── */
+let lang = localStorage.getItem('lang') || 'en';
+function setLang(l) {
+  lang = l;
+  localStorage.setItem('lang', l);
+  document.querySelectorAll('.lang-btn').forEach(b => b.classList.toggle('active', b.dataset.lang === l));
+  document.querySelectorAll('.i18n').forEach(el => { if (el.dataset[l]) el.textContent = el.dataset[l]; });
+  document.getElementById('searchIn').placeholder =
+    l === 'en' ? 'search by name, synonym, category…' : 'buscar por nombre, sinónimo, categoría…';
+  const mt = document.getElementById('modal-title-text');
+  if (mt && mt.textContent.includes('NUEVO') || mt && mt.textContent.includes('NEW')) {
+    mt.textContent = l === 'en' ? 'NEW ITEM' : 'NUEVO ITEM';
+  }
+}
+
+renderItems(ITEMS);
+setLang(lang);
+</script>
+</body>
+</html>

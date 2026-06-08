@@ -1,0 +1,258 @@
+{% extends "base.html" %}
+{% block title %}res_domus{% endblock %}
+{% block nav_home %}active-page{% endblock %}
+
+{% block head_extra %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block styles %}
+  /* ── BUDGET ── */
+  .budget-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 9px; }
+  .budget-period { font-family: var(--mono); font-size: 9px; color: var(--dim2); }
+  .budget-main { display: flex; align-items: center; gap: 18px; }
+  .budget-pct { font-family: var(--sans); font-size: 36px; font-weight: 600; color: var(--text); line-height: 1; min-width: 90px; flex-shrink: 0; letter-spacing: -.01em; }
+  .budget-right { flex: 1; }
+  .budget-bar-bg { height: 9px; background: var(--surface2); border-radius: 5px; overflow: hidden; margin-bottom: 8px; }
+  .budget-fill { height: 100%; border-radius: 5px; background: linear-gradient(90deg, var(--green), var(--yellow) 60%, var(--orange)); transform-origin: left; animation: growX .7s cubic-bezier(.4,0,.2,1) .15s both; }
+  .budget-fill.over { background: repeating-linear-gradient(-45deg, rgba(253,151,31,.9) 0, rgba(253,151,31,.9) 5px, rgba(249,38,114,.75) 5px, rgba(249,38,114,.75) 10px); animation: none; }
+  .budget-sub { display: flex; gap: 16px; flex-wrap: wrap; font-family: var(--mono); font-size: 10px; }
+  .b-spent { color: var(--muted); }
+  .b-avg { color: var(--text); }
+  .b-avg strong { font-weight: 500; }
+  .b-days { color: var(--muted); }
+  .b-days strong { color: var(--text); font-weight: 500; }
+
+  /* ── KPI STRIP ── */
+  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 10px; }
+  .kpi { background: var(--surface); border: 1px solid var(--border); border-top: 2px solid var(--kc, var(--orange)); border-radius: 6px; padding: 12px 13px; animation: fadeUp .4s ease both; }
+  .kpi:nth-child(1) { animation-delay: 0s; }
+  .kpi:nth-child(2) { animation-delay: .06s; }
+  .kpi:nth-child(3) { animation-delay: .12s; }
+  .kpi:nth-child(4) { animation-delay: .18s; }
+  .kpi-label { font-family: var(--mono); font-size: 9px; letter-spacing: .07em; color: var(--muted); margin-bottom: 4px; }
+  .kpi-val { font-size: 19px; font-weight: 600; line-height: 1.1; }
+  .kpi-val .u { font-size: 11px; font-weight: 400; color: var(--muted); }
+  .kpi-delta { font-family: var(--mono); font-size: 10px; margin-top: 4px; }
+  .up { color: var(--pink); }
+  .down { color: var(--green); }
+  .flat { color: var(--muted); }
+
+  /* ── CHART ── */
+  .chart-wrap { position: relative; height: 220px; }
+  .chart-legend { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 9px; }
+  .leg { display: flex; align-items: center; gap: 5px; font-family: var(--mono); font-size: 9px; color: var(--muted); }
+  .leg-line { width: 18px; height: 2px; border-radius: 1px; flex-shrink: 0; }
+  .leg-line.dash { background: repeating-linear-gradient(90deg, var(--lc) 0, var(--lc) 4px, transparent 4px, transparent 8px); }
+  .leg-line.thin { height: 1px; }
+
+  /* ── NEEDED SOON ── */
+  .needed-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; }
+  .ni { display: flex; flex-direction: column; align-items: center; text-align: center; animation: fadeUp .4s ease var(--nd, 0s) both; }
+  .ni.ni-extra { display: none; }
+  .ni.ni-extra.shown { display: flex; }
+  .ni-circ { position: relative; width: 68px; height: 68px; margin-bottom: 7px; }
+  .ni-circ svg { width: 100%; height: 100%; display: block; }
+  .ni-arc { stroke-dasharray: 100; stroke-dashoffset: 100; transition: stroke-dashoffset .7s cubic-bezier(.4,0,.2,1); }
+  .ni-val { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); font-family: var(--mono); font-size: 11px; font-weight: 500; line-height: 1; pointer-events: none; }
+  .ni-name { font-size: 13px; color: var(--text); margin-bottom: 2px; }
+  .ni-meta { font-family: var(--mono); font-size: 9px; color: var(--dim2); line-height: 1.4; }
+  .expand-btn { display: flex; align-items: center; gap: 5px; margin: 12px auto 0; font-family: var(--mono); font-size: 9px; letter-spacing: .05em; color: var(--dim2); background: none; border: 1px solid rgba(107,117,133,.25); border-radius: 3px; padding: 4px 11px; cursor: pointer; transition: color .15s, border-color .15s; }
+  .expand-btn:hover { color: var(--muted); border-color: rgba(107,117,133,.5); }
+  .expand-btn .arr { transition: transform .2s; display: inline-block; }
+  .expand-btn.open .arr { transform: rotate(180deg); }
+
+  /* ── BOTTOM ROW ── */
+  .row-bot { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+  .row-bot .card { display: flex; flex-direction: column; }
+  .row-bot .card .table-wrap, .row-bot .card .top-items-list { flex: 1; }
+  .row-bot .card .table-wrap { overflow-x: hidden; }
+  .row-bot .card-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ti-hdr { display: grid; grid-template-columns: 1fr 72px 28px; gap: 7px; font-family: var(--mono); font-size: 9px; letter-spacing: .07em; color: var(--dim2); padding: 0 0 7px 3px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  .ti-hdr span:last-child { text-align: right; }
+  .ti-row { display: grid; grid-template-columns: 1fr 72px 28px; align-items: center; gap: 7px; padding: 6px 3px; border-bottom: 1px solid rgba(52,56,66,.4); transition: background .15s; margin-left: -3px; }
+  .ti-row:last-child { border-bottom: none; }
+  .ti-row:hover { background: rgba(255,255,255,.025); }
+  .ti-name { font-size: 11px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ti-pct  { font-family: var(--mono); font-size: 10px; color: var(--muted); text-align: right; }
+  .bar-bg   { height: 7px; background: var(--surface2); border-radius: 3px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 3px; transform-origin: left; animation: growX .55s cubic-bezier(.4,0,.2,1) both; opacity: .88; }
+
+  /* ── TABLE ── */
+  table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  col.col-date  { width: 52px; }
+  col.col-total { width: 66px; }
+  col.col-entry { width: 44px; }
+  th { font-family: var(--mono); font-size: 9px; letter-spacing: .07em; color: var(--dim2); text-align: left; padding: 0 9px 7px 0; border-bottom: 1px solid var(--border); white-space: nowrap; position: sticky; top: 0; background: var(--surface); }
+  th:last-child { padding-right: 0; }
+  td { padding: 6px 9px 6px 0; border-bottom: 1px solid rgba(52,56,66,.4); font-family: var(--mono); font-size: 11px; color: var(--muted); vertical-align: middle; white-space: nowrap; }
+  td:last-child { padding-right: 0; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(255,255,255,.018); }
+  .td-store { font-family: var(--sans); font-size: 12px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
+  .td-price { color: var(--orange); }
+  .badge { display: inline-block; font-family: var(--mono); font-size: 9px; letter-spacing: .03em; padding: 2px 6px; border-radius: 3px; }
+
+  /* ── CHAT ── */
+  .card-chat { border: 1.5px solid rgba(249,38,114,.55); box-shadow: 0 0 16px rgba(249,38,114,.07); }
+  .chat-msgs { display: flex; flex-direction: column; gap: 7px; max-height: 130px; overflow-y: auto; margin-bottom: 10px; padding-right: 4px; }
+  .chat-msgs::-webkit-scrollbar { width: 3px; }
+  .chat-msgs::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  .msg { max-width: 90%; padding: 8px 11px; border-radius: 7px; font-family: var(--mono); font-size: 11px; line-height: 1.65; }
+  .msg-u { align-self: flex-end; background: rgba(102,217,232,.08); border: 1px solid rgba(102,217,232,.2); color: var(--cyan); }
+  .msg-b { align-self: flex-start; background: var(--surface2); border: 1px solid var(--border); color: var(--text); }
+  .msg-b .hi  { color: var(--orange); }
+  .msg-b .ok  { color: var(--green); }
+  .msg-b .up  { color: var(--pink); }
+  .msg-b .lo  { color: var(--cyan); }
+  .msg-b .src { color: var(--cyan); display: block; margin-top: 5px; }
+  .msg-b .src-items { color: var(--muted); padding-left: 10px; display: block; line-height: 1.8; }
+  .msg-b .src-sub { color: var(--dim2); display: block; padding-left: 10px; }
+  .msg-b .basket-total { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--border); display: block; }
+  .msg-b .basket-note { color: var(--dim2); font-size: 9px; display: block; margin-top: 4px; }
+  .chat-row { display: flex; gap: 7px; }
+  .chat-input { flex: 1; background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; padding: 8px 11px; font-family: var(--mono); font-size: 11px; color: var(--text); outline: none; transition: border-color .15s; }
+  .chat-input::placeholder { color: var(--dim); }
+  .chat-input:focus { border-color: var(--purple); }
+  .chat-send { width: 28px; height: 28px; flex-shrink: 0; border-radius: 50%; background: none; border: 1.5px solid rgba(249,38,114,.45); cursor: pointer; transition: background .15s, border-color .15s; display: flex; align-items: center; justify-content: center; }
+  .chat-send::after { content: ''; width: 11px; height: 11px; border-radius: 50%; background: var(--orange); opacity: .85; transition: opacity .15s; }
+  .chat-send:hover { border-color: rgba(249,38,114,.75); }
+  .chat-send:hover::after { opacity: 1; }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 640px) {
+    .kpis { grid-template-columns: 1fr 1fr; }
+    .needed-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .row-bot { grid-template-columns: 1fr; }
+    .budget-pct { font-size: 28px; min-width: 74px; }
+    .chart-wrap { height: 160px; }
+  }
+  @media (max-width: 400px) { .kpi-val { font-size: 17px; } }
+{% endblock %}
+
+{% block topbar_period %}
+  <div class="tab-group" id="period-tabs">
+    <div class="tab active" onclick="setPeriod(this,'30d')">30d</div>
+    <div class="tab" onclick="setPeriod(this,'90d')">90d</div>
+    <div class="tab" onclick="setPeriod(this,'all')">all</div>
+  </div>
+  <div class="top-sep">|</div>
+{% endblock %}
+
+{% block main %}
+
+  <!-- BUDGET -->
+  <div class="card mb">
+    <div class="budget-header">
+      <span class="card-label" style="margin-bottom:0" id="lbl-budget">presupuesto</span>
+      <span class="budget-period" id="budget-period"></span>
+    </div>
+    <div class="budget-main">
+      <div class="budget-pct" id="budget-pct">—</div>
+      <div class="budget-right">
+        <div class="budget-bar-bg"><div class="budget-fill" id="budget-bar" style="width:0%"></div></div>
+        <div class="budget-sub">
+          <span class="b-spent" id="budget-spent"></span>
+          <span class="b-avg"><span id="lbl-avg18">promedio 18m</span>: <strong id="budget-avg"></strong></span>
+          <span class="b-days"><span id="lbl-days">días restantes</span>: <strong id="budget-days"></strong></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- KPI STRIP -->
+  <div class="kpis mb">
+    <div class="kpi" style="--kc:var(--orange)">
+      <div class="kpi-label"><span class="i18n" data-en="this month" data-es="este mes">este mes</span></div>
+      <div class="kpi-val" id="kpi-total"><span class="u">S/.</span>—</div>
+      <div class="kpi-delta" id="kpi-total-delta">—</div>
+    </div>
+    <div class="kpi" style="--kc:var(--cyan)">
+      <div class="kpi-label"><span class="i18n" data-en="orders" data-es="pedidos">pedidos</span></div>
+      <div class="kpi-val" id="kpi-orders">— <span class="u"><span class="i18n" data-en="ord." data-es="órd.">órd.</span></span></div>
+      <div class="kpi-delta" id="kpi-orders-delta">—</div>
+    </div>
+    <div class="kpi" style="--kc:var(--green)">
+      <div class="kpi-label"><span class="i18n" data-en="avg ticket" data-es="ticket promedio">ticket promedio</span></div>
+      <div class="kpi-val" id="kpi-avg"><span class="u">S/.</span>—</div>
+      <div class="kpi-delta" id="kpi-avg-delta">—</div>
+    </div>
+    <div class="kpi" style="--kc:var(--purple)">
+      <div class="kpi-label"><span class="i18n" data-en="items" data-es="artículos">artículos</span></div>
+      <div class="kpi-val" id="kpi-tracked">— <span class="u">items</span></div>
+      <div class="kpi-delta" id="kpi-tracked-delta">—</div>
+    </div>
+  </div>
+
+  <!-- CHART -->
+  <div class="card mb">
+    <div class="card-label">
+      <span id="lbl-chart">gasto mensual</span>
+      <span style="color:var(--pink);font-size:8px" id="lbl-anomaly"></span>
+    </div>
+    <div class="chart-wrap"><canvas id="chart"></canvas></div>
+    <div class="chart-legend">
+      <div class="leg"><div class="leg-line" style="background:var(--orange)"></div><span id="leg-total">total</span></div>
+      <div class="leg"><div class="leg-line dash" style="--lc:var(--cyan)"></div>abarrotes</div>
+      <div class="leg"><div class="leg-line dash" style="--lc:var(--pink)"></div>carnes</div>
+      <div class="leg"><div class="leg-line thin" style="background:var(--green)"></div><span id="leg-delivery">delivery + servicio</span></div>
+    </div>
+  </div>
+
+  <!-- NEEDED SOON -->
+  <div class="card mb">
+    <div class="card-label" id="lbl-needed">por agotar</div>
+    <div class="needed-grid" id="neededGrid"></div>
+    <button class="expand-btn" id="needExpBtn" onclick="toggleNeeded()" style="display:none">
+      <span id="needExpLabel">ver más</span> <span class="arr">▾</span>
+    </button>
+  </div>
+
+  <!-- BOTTOM ROW -->
+  <div class="row-bot mb">
+    <div class="card">
+      <div class="card-label" id="lbl-bycat">mayor gasto · este mes</div>
+      <div class="ti-hdr"><span class="i18n" data-en="item" data-es="ítem">ítem</span><span></span><span>%</span></div>
+      <div class="top-items-list" id="topItemsList"></div>
+    </div>
+    <div class="card">
+      <div class="card-label" id="lbl-recent">últimas compras</div>
+      <div class="table-wrap">
+        <table>
+          <colgroup>
+            <col class="col-date"><col><col class="col-total"><col class="col-entry">
+          </colgroup>
+          <thead>
+            <tr>
+              <th class="i18n" data-en="Date" data-es="Fecha">Fecha</th>
+              <th class="i18n" data-en="Store" data-es="Tienda">Tienda</th>
+              <th class="i18n" data-en="Total" data-es="Total">Total</th>
+              <th class="i18n" data-en="Entry" data-es="Entrada">Entrada</th>
+            </tr>
+          </thead>
+          <tbody id="ordersBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- CHAT -->
+  <div class="card card-chat">
+    <div class="card-label" id="lbl-chat">manager</div>
+    <div class="chat-msgs" id="chatMsgs">
+      <div class="msg msg-u">arma mi lista de abarrotes para esta semana</div>
+      <div class="msg msg-b"><span id="basket-demo"></span></div>
+    </div>
+    <div class="chat-row">
+      <input class="chat-input" id="chatIn" type="text"
+        placeholder="consulta sobre precios, listas, urgencias, tendencias…"
+        onkeydown="sendMsg(event)">
+      <button class="chat-send" onclick="sendMsg({key:'Enter'})"></button>
+    </div>
+  </div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/dashboard.js"></script>
+{% endblock %}

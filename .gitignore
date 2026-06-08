@@ -1,0 +1,14 @@
+config.py
+__pycache__/
+*.pyc
+*.pyo
+.env
+res_domus.db
+input/
+review/
+archive/
+output/
+*.egg-info/
+.venv/
+dist/
+build/

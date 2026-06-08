@@ -1,0 +1,16 @@
+services:
+  app:
+    build: .
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./res_domus.db:/app/res_domus.db
+      - ./aux_items.csv:/app/aux_items.csv
+      - ./input:/app/input
+      - ./review:/app/review
+      - ./archive:/app/archive
+      - ./output:/app/output
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - SECRET_KEY=${SECRET_KEY:-change-me}
+    restart: unless-stopped

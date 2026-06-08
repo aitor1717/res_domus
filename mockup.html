@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Res Domus — Mockup</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+/* ── Futura with geometric sans fallbacks ───────────────────────────────── */
+@font-face {
+  font-family: 'Futura';
+  src: local('Futura Medium'), local('Futura-Medium'), local('FuturaMedium'),
+       local('Futura Book'),   local('Futura-Book');
+  font-weight: 400 500;
+}
+@font-face {
+  font-family: 'Futura';
+  src: local('Futura Bold'),   local('Futura-Bold'),  local('FuturaBold'),
+       local('Futura Heavy'),  local('Futura-Heavy');
+  font-weight: 600 800;
+}
+
+/* ── Tokens ─────────────────────────────────────────────────────────────── */
+:root {
+  --bg:      #1E2127;
+  --surface: #272B33;
+  --surface2:#2E323C;
+  --border:  #343842;
+  --text:    #F8F8F2;
+  --muted:   #75715E;
+  --dim:     #454158;
+
+  --pink:    #F92672;
+  --cyan:    #66D9E8;
+  --green:   #A6E22E;
+  --yellow:  #E6DB74;
+  --purple:  #AE81FF;
+  --orange:  #FD971F;
+
+  --mono: 'IBM Plex Mono', 'Courier New', monospace;
+  --sans: 'Futura', 'Century Gothic', 'Trebuchet MS', 'Gill Sans', sans-serif;
+
+  --radius: 6px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ── Chalk grain overlay ────────────────────────────────────────────────── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 999;
+  opacity: .045;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='chalk'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23chalk)'/%3E%3C/svg%3E");
+  background-size: 300px 300px;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── Layout ─────────────────────────────────────────────────────────────── */
+.layout {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  grid-template-rows: 48px 1fr;
+  min-height: 100vh;
+}
+
+/* ── Topbar ─────────────────────────────────────────────────────────────── */
+.topbar {
+  grid-column: 1 / -1;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  gap: 20px;
+}
+
+.wordmark {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+.wordmark span { color: var(--orange); }
+
+.topbar-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.status-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 6px var(--green);
+}
+.status-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: .05em;
+}
+
+/* ── Sidebar ─────────────────────────────────────────────────────────────── */
+.sidebar {
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  padding: 20px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.nav-section {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--dim);
+  padding: 14px 16px 4px;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 16px;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: .03em;
+  color: var(--muted);
+  cursor: pointer;
+  border-left: 2px solid transparent;
+  transition: color .15s, background .15s;
+  text-decoration: none;
+}
+.nav-item:hover { color: var(--text); background: var(--surface2); }
+.nav-item.active {
+  color: var(--cyan);
+  border-left-color: var(--cyan);
+  background: rgba(102,217,232,.06);
+}
+.nav-icon { font-size: 14px; opacity: .7; }
+
+/* ── Main content ─────────────────────────────────────────────────────────── */
+.main {
+  padding: 28px 32px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* ── Page header ─────────────────────────────────────────────────────────── */
+.page-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+}
+.page-title {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -.01em;
+}
+.page-subtitle {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 3px;
+}
+.window-tabs {
+  display: flex;
+  gap: 4px;
+}
+.wtab {
+  font-family: var(--mono);
+  font-size: 10px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  cursor: pointer;
+  background: transparent;
+}
+.wtab.active {
+  background: rgba(253,151,31,.12);
+  border-color: rgba(253,151,31,.3);
+  color: var(--orange);
+}
+
+/* ── KPI strip ───────────────────────────────────────────────────────────── */
+.kpi-strip {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+.kpi-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  position: relative;
+  overflow: hidden;
+}
+.kpi-card::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: var(--accent, var(--border));
+}
+.kpi-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+.kpi-value {
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: -.02em;
+  color: var(--text);
+  line-height: 1;
+}
+.kpi-value small {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--muted);
+  margin-left: 3px;
+}
+.kpi-delta {
+  font-family: var(--mono);
+  font-size: 10px;
+  margin-top: 6px;
+  color: var(--muted);
+}
+.kpi-delta.up   { color: var(--pink); }
+.kpi-delta.down { color: var(--green); }
+
+/* ── Row ─────────────────────────────────────────────────────────────────── */
+.row {
+  display: grid;
+  gap: 16px;
+}
+.row-2 { grid-template-columns: 1fr 1fr; }
+.row-3 { grid-template-columns: 2fr 1fr; }
+
+/* ── Card ─────────────────────────────────────────────────────────────────── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.card-title {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+.card-action {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--cyan);
+  cursor: pointer;
+  letter-spacing: .05em;
+}
+.card-body { padding: 16px; }
+
+/* ── Chart placeholder ───────────────────────────────────────────────────── */
+.chart-area {
+  height: 200px;
+  position: relative;
+  padding: 8px 0 0;
+}
+
+/* Fake sparkline SVG */
+.chart-area svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+/* ── Category bars ───────────────────────────────────────────────────────── */
+.cat-bars { display: flex; flex-direction: column; gap: 10px; }
+.cat-row {
+  display: grid;
+  grid-template-columns: 110px 1fr 56px;
+  align-items: center;
+  gap: 10px;
+}
+.cat-name {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.bar-track {
+  height: 5px;
+  background: var(--surface2);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--fill, var(--cyan));
+}
+.cat-val {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text);
+  text-align: right;
+}
+
+/* ── Inventory urgency ───────────────────────────────────────────────────── */
+.inv-list { display: flex; flex-direction: column; gap: 10px; }
+.inv-row {
+  display: grid;
+  grid-template-columns: 1fr 120px 52px;
+  align-items: center;
+  gap: 10px;
+}
+.inv-name {
+  font-size: 12px;
+  font-weight: 500;
+}
+.inv-sub {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--muted);
+  margin-top: 1px;
+}
+.urgency-track {
+  height: 4px;
+  background: var(--surface2);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.urgency-fill {
+  height: 100%;
+  border-radius: 3px;
+}
+.urgency-val {
+  font-family: var(--mono);
+  font-size: 10px;
+  text-align: right;
+}
+
+/* ── Chat ─────────────────────────────────────────────────────────────────── */
+.chat-messages {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 140px;
+  margin-bottom: 12px;
+}
+.msg {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.msg-role {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  padding-top: 3px;
+  min-width: 46px;
+}
+.msg-role.user  { color: var(--cyan); }
+.msg-role.bot   { color: var(--purple); }
+.msg-text {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text);
+  line-height: 1.65;
+  background: var(--surface2);
+  border-radius: 4px;
+  padding: 7px 10px;
+  flex: 1;
+}
+.chat-input-row {
+  display: flex;
+  gap: 8px;
+}
+.chat-input {
+  flex: 1;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 8px 12px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text);
+  outline: none;
+}
+.chat-input::placeholder { color: var(--dim); }
+.chat-input:focus { border-color: var(--purple); }
+.chat-btn {
+  background: rgba(174,129,255,.15);
+  border: 1px solid rgba(174,129,255,.3);
+  border-radius: 4px;
+  padding: 8px 14px;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--purple);
+  cursor: pointer;
+  letter-spacing: .05em;
+}
+
+/* ── Recent purchases table ──────────────────────────────────────────────── */
+.ptable { width: 100%; border-collapse: collapse; }
+.ptable th {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--dim);
+  font-weight: 400;
+  padding: 0 12px 8px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+.ptable td {
+  padding: 8px 12px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+  border-bottom: 1px solid rgba(52,56,66,.5);
+  vertical-align: middle;
+}
+.ptable tr:last-child td { border-bottom: none; }
+.ptable tr:hover td { background: var(--surface2); }
+.ptable td.name { color: var(--text); font-family: var(--sans); font-size: 12px; }
+.ptable td.price { color: var(--orange); }
+.ptable td.source { color: var(--cyan); }
+.badge {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 9px;
+  padding: 2px 7px;
+  border-radius: 3px;
+  letter-spacing: .04em;
+}
+.badge-purple { background: rgba(174,129,255,.12); color: var(--purple); border: 1px solid rgba(174,129,255,.2); }
+.badge-green  { background: rgba(166,226,46,.1);   color: var(--green);  border: 1px solid rgba(166,226,46,.2); }
+.badge-orange { background: rgba(253,151,31,.1);   color: var(--orange); border: 1px solid rgba(253,151,31,.2); }
+.badge-yellow { background: rgba(230,219,116,.1);  color: var(--yellow); border: 1px solid rgba(230,219,116,.2); }
+
+/* ── Budget ──────────────────────────────────────────────────────────────── */
+.budget-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 10px;
+}
+.budget-spent {
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -.02em;
+  color: var(--text);
+}
+.budget-spent small { font-size: 13px; color: var(--muted); font-weight: 400; }
+.budget-limit {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+}
+.budget-track {
+  height: 8px;
+  background: var(--surface2);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+.budget-fill {
+  height: 100%;
+  border-radius: 4px;
+  background: linear-gradient(90deg, var(--green), var(--yellow));
+  transition: width .4s ease;
+}
+.budget-fill.warn  { background: linear-gradient(90deg, var(--yellow), var(--orange)); }
+.budget-fill.over  { background: linear-gradient(90deg, var(--orange), var(--pink)); }
+.budget-pct {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--muted);
+  text-align: right;
+}
+
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+@media (max-width: 780px) {
+  .layout { grid-template-columns: 1fr; }
+  .sidebar { display: none; }
+  .kpi-strip { grid-template-columns: 1fr 1fr; }
+  .row-2, .row-3 { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<div class="layout">
+
+  <!-- ── Topbar ──────────────────────────────────────────────────────────── -->
+  <header class="topbar">
+    <div class="wordmark">RES <span>DOMUS</span></div>
+    <div class="topbar-right">
+      <div class="status-dot"></div>
+      <div class="status-label">LIVE · Jun 2026</div>
+    </div>
+  </header>
+
+  <!-- ── Sidebar ─────────────────────────────────────────────────────────── -->
+  <nav class="sidebar">
+    <div class="nav-section">Analyze</div>
+    <a class="nav-item active" href="#">
+      <span class="nav-icon">◈</span> Dashboard
+    </a>
+    <a class="nav-item" href="#">
+      <span class="nav-icon">↗</span> Price History
+    </a>
+    <a class="nav-item" href="#">
+      <span class="nav-icon">⚡</span> Anomalies
+    </a>
+    <div class="nav-section">Manage</div>
+    <a class="nav-item" href="#">
+      <span class="nav-icon">⬆</span> Upload
+    </a>
+    <a class="nav-item" href="#">
+      <span class="nav-icon">≡</span> Items
+    </a>
+    <div class="nav-section">System</div>
+    <a class="nav-item" href="#">
+      <span class="nav-icon">◎</span> Settings
+    </a>
+  </nav>
+
+  <!-- ── Main ────────────────────────────────────────────────────────────── -->
+  <main class="main">
+
+    <!-- Page header -->
+    <div class="page-header">
+      <div>
+        <div class="page-title">Dashboard</div>
+        <div class="page-subtitle">Household · Lima, PE · last updated 3h ago</div>
+      </div>
+      <div class="window-tabs">
+        <button class="wtab">30d</button>
+        <button class="wtab active">90d</button>
+        <button class="wtab">All</button>
+      </div>
+    </div>
+
+    <!-- KPI strip -->
+    <div class="kpi-strip">
+      <div class="kpi-card" style="--accent:var(--orange)">
+        <div class="kpi-label">This month</div>
+        <div class="kpi-value">S/.487<small>.30</small></div>
+        <div class="kpi-delta up">↑ 12% vs avg</div>
+      </div>
+      <div class="kpi-card" style="--accent:var(--cyan)">
+        <div class="kpi-label">Purchases</div>
+        <div class="kpi-value">34<small> orders</small></div>
+        <div class="kpi-delta down">↓ 3 vs last month</div>
+      </div>
+      <div class="kpi-card" style="--accent:var(--green)">
+        <div class="kpi-label">Avg order</div>
+        <div class="kpi-value">S/.43<small>.20</small></div>
+        <div class="kpi-delta">stable</div>
+      </div>
+      <div class="kpi-card" style="--accent:var(--purple)">
+        <div class="kpi-label">Items tracked</div>
+        <div class="kpi-value">62<small> items</small></div>
+        <div class="kpi-delta">4 new this month</div>
+      </div>
+    </div>
+
+    <!-- Spend chart + Category bars -->
+    <div class="row row-3">
+
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">Spend over time</div>
+          <div class="card-action">legend ↓</div>
+        </div>
+        <div class="card-body">
+          <div class="chart-area">
+            <svg viewBox="0 0 600 180" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="g1" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%"   stop-color="#FD971F" stop-opacity=".25"/>
+                  <stop offset="100%" stop-color="#FD971F" stop-opacity="0"/>
+                </linearGradient>
+                <linearGradient id="g2" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%"   stop-color="#66D9E8" stop-opacity=".2"/>
+                  <stop offset="100%" stop-color="#66D9E8" stop-opacity="0"/>
+                </linearGradient>
+              </defs>
+              <!-- Grid lines -->
+              <line x1="0" y1="45"  x2="600" y2="45"  stroke="#343842" stroke-width=".5"/>
+              <line x1="0" y1="90"  x2="600" y2="90"  stroke="#343842" stroke-width=".5"/>
+              <line x1="0" y1="135" x2="600" y2="135" stroke="#343842" stroke-width=".5"/>
+              <!-- Area fill – total spend -->
+              <path d="M0,120 C50,110 100,95 150,100 C200,105 250,80 300,70 C350,60 400,85 450,75 C500,65 550,50 600,55 L600,180 L0,180 Z"
+                    fill="url(#g1)"/>
+              <!-- Line – total spend -->
+              <path d="M0,120 C50,110 100,95 150,100 C200,105 250,80 300,70 C350,60 400,85 450,75 C500,65 550,50 600,55"
+                    fill="none" stroke="#FD971F" stroke-width="1.8"/>
+              <!-- Area fill – Abarrotes -->
+              <path d="M0,140 C50,135 100,130 150,128 C200,126 250,115 300,110 C350,105 400,118 450,112 C500,106 550,95 600,98 L600,180 L0,180 Z"
+                    fill="url(#g2)"/>
+              <!-- Line – Abarrotes -->
+              <path d="M0,140 C50,135 100,130 150,128 C200,126 250,115 300,110 C350,105 400,118 450,112 C500,106 550,95 600,98"
+                    fill="none" stroke="#66D9E8" stroke-width="1.4" stroke-dasharray="4 2"/>
+              <!-- Anomaly dot -->
+              <circle cx="300" cy="70" r="4" fill="none" stroke="#F92672" stroke-width="1.5"/>
+              <circle cx="300" cy="70" r="2" fill="#F92672"/>
+              <!-- Axis labels -->
+              <text x="0"   y="175" font-family="IBM Plex Mono,monospace" font-size="9" fill="#75715E">Mar</text>
+              <text x="150" y="175" font-family="IBM Plex Mono,monospace" font-size="9" fill="#75715E">Apr</text>
+              <text x="300" y="175" font-family="IBM Plex Mono,monospace" font-size="9" fill="#75715E">May</text>
+              <text x="450" y="175" font-family="IBM Plex Mono,monospace" font-size="9" fill="#75715E">Jun</text>
+            </svg>
+          </div>
+          <!-- Legend -->
+          <div style="display:flex;gap:16px;margin-top:8px">
+            <div style="display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:9px;color:var(--muted)">
+              <span style="display:inline-block;width:16px;height:2px;background:var(--orange)"></span>Total
+            </div>
+            <div style="display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:9px;color:var(--muted)">
+              <span style="display:inline-block;width:16px;height:2px;background:var(--cyan);opacity:.7"></span>Abarrotes
+            </div>
+            <div style="display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:9px;color:var(--pink)">
+              <span style="display:inline-block;width:8px;height:8px;border-radius:50%;border:1.5px solid var(--pink)"></span>Anomaly
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Category bars -->
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">By category</div>
+          <div class="card-action">90d</div>
+        </div>
+        <div class="card-body">
+          <div class="cat-bars">
+            <div class="cat-row">
+              <div class="cat-name">Abarrotes</div>
+              <div class="bar-track"><div class="bar-fill" style="width:78%;--fill:var(--cyan)"></div></div>
+              <div class="cat-val">S/.312</div>
+            </div>
+            <div class="cat-row">
+              <div class="cat-name">Carnes</div>
+              <div class="bar-track"><div class="bar-fill" style="width:52%;--fill:var(--pink)"></div></div>
+              <div class="cat-val">S/.208</div>
+            </div>
+            <div class="cat-row">
+              <div class="cat-name">Frutas y Verd.</div>
+              <div class="bar-track"><div class="bar-fill" style="width:38%;--fill:var(--green)"></div></div>
+              <div class="cat-val">S/.152</div>
+            </div>
+            <div class="cat-row">
+              <div class="cat-name">Limpieza</div>
+              <div class="bar-track"><div class="bar-fill" style="width:22%;--fill:var(--yellow)"></div></div>
+              <div class="cat-val">S/.88</div>
+            </div>
+            <div class="cat-row">
+              <div class="cat-name">Papá</div>
+              <div class="bar-track"><div class="bar-fill" style="width:14%;--fill:var(--purple)"></div></div>
+              <div class="cat-val">S/.56</div>
+            </div>
+            <div class="cat-row">
+              <div class="cat-name">Delivery</div>
+              <div class="bar-track"><div class="bar-fill" style="width:10%;--fill:var(--orange)"></div></div>
+              <div class="cat-val">S/.40</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Needed soon + Budget -->
+    <div class="row row-2">
+
+      <!-- Needed soon -->
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">Needed soon</div>
+          <div class="card-action">urgency ≥ 80%</div>
+        </div>
+        <div class="card-body">
+          <div class="inv-list">
+            <div class="inv-row">
+              <div>
+                <div class="inv-name">Aceite</div>
+                <div class="inv-sub">last 22 May · avg 18d</div>
+              </div>
+              <div class="urgency-track">
+                <div class="urgency-fill" style="width:98%;background:var(--pink)"></div>
+              </div>
+              <div class="urgency-val" style="color:var(--pink)">0.98</div>
+            </div>
+            <div class="inv-row">
+              <div>
+                <div class="inv-name">Arroz</div>
+                <div class="inv-sub">last 28 May · avg 14d</div>
+              </div>
+              <div class="urgency-track">
+                <div class="urgency-fill" style="width:92%;background:var(--orange)"></div>
+              </div>
+              <div class="urgency-val" style="color:var(--orange)">0.92</div>
+            </div>
+            <div class="inv-row">
+              <div>
+                <div class="inv-name">Huevos</div>
+                <div class="inv-sub">last 30 May · avg 7d</div>
+              </div>
+              <div class="urgency-track">
+                <div class="urgency-fill" style="width:86%;background:var(--yellow)"></div>
+              </div>
+              <div class="urgency-val" style="color:var(--yellow)">0.86</div>
+            </div>
+            <div class="inv-row">
+              <div>
+                <div class="inv-name">Leche</div>
+                <div class="inv-sub">last 1 Jun · avg 10d</div>
+              </div>
+              <div class="urgency-track">
+                <div class="urgency-fill" style="width:80%;background:var(--yellow)"></div>
+              </div>
+              <div class="urgency-val" style="color:var(--yellow)">0.80</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Budget -->
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">Budget · Jun 2026</div>
+          <div class="card-action">set limit ↗</div>
+        </div>
+        <div class="card-body">
+          <div class="budget-row">
+            <div class="budget-spent">S/.487<small>.30</small></div>
+            <div class="budget-limit">of S/.620 limit</div>
+          </div>
+          <div class="budget-track">
+            <div class="budget-fill warn" style="width:78.6%"></div>
+          </div>
+          <div class="budget-pct">78.6% — S/.132.70 remaining</div>
+          <div style="margin-top:16px;display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <div style="background:var(--surface2);border-radius:4px;padding:10px">
+              <div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-bottom:4px;letter-spacing:.08em;text-transform:uppercase">18-month avg</div>
+              <div style="font-size:16px;font-weight:600">S/.432</div>
+            </div>
+            <div style="background:var(--surface2);border-radius:4px;padding:10px">
+              <div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-bottom:4px;letter-spacing:.08em;text-transform:uppercase">Days left</div>
+              <div style="font-size:16px;font-weight:600">25 <span style="font-size:11px;font-weight:400;color:var(--muted)">days</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Recent + Chat -->
+    <div class="row row-2">
+
+      <!-- Recent purchases -->
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">Recent purchases</div>
+          <div class="card-action">view all →</div>
+        </div>
+        <table class="ptable">
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>Date</th>
+              <th>Source</th>
+              <th>Price</th>
+              <th>Cat.</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="name">Pechuga de Pollo</td>
+              <td>03 Jun</td>
+              <td class="source">PedidosYa</td>
+              <td class="price">S/.22.00</td>
+              <td><span class="badge badge-purple">Papá</span></td>
+            </tr>
+            <tr>
+              <td class="name">Arroz</td>
+              <td>03 Jun</td>
+              <td class="source">Tottus</td>
+              <td class="price">S/.4.20</td>
+              <td><span class="badge badge-green">Abarr.</span></td>
+            </tr>
+            <tr>
+              <td class="name">Bisteck</td>
+              <td>01 Jun</td>
+              <td class="source">Mercado</td>
+              <td class="price">S/.18.50</td>
+              <td><span class="badge badge-orange">Carnes</span></td>
+            </tr>
+            <tr>
+              <td class="name">Papel Higiénico</td>
+              <td>01 Jun</td>
+              <td class="source">Metro</td>
+              <td class="price">S/.12.90</td>
+              <td><span class="badge badge-yellow">Limpieza</span></td>
+            </tr>
+            <tr>
+              <td class="name">Cebolla</td>
+              <td>30 May</td>
+              <td class="source">Mercado</td>
+              <td class="price">S/.1.80</td>
+              <td><span class="badge badge-green">F y V</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Warehouse manager chat -->
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">Warehouse manager</div>
+          <div class="card-action" style="color:var(--purple)">SQL mode</div>
+        </div>
+        <div class="card-body">
+          <div class="chat-messages">
+            <div class="msg">
+              <div class="msg-role user">you</div>
+              <div class="msg-text">What did I spend most on last month?</div>
+            </div>
+            <div class="msg">
+              <div class="msg-role bot">rd</div>
+              <div class="msg-text">Carnes led in May at <span style="color:var(--orange)">S/.198.40</span> (38%), followed by Abarrotes at <span style="color:var(--cyan)">S/.162.00</span> (31%). Pollo alone was S/.72.</div>
+            </div>
+            <div class="msg">
+              <div class="msg-role user">you</div>
+              <div class="msg-text">Is the price of huevos going up?</div>
+            </div>
+            <div class="msg">
+              <div class="msg-role bot">rd</div>
+              <div class="msg-text">Avg unit price: <span style="color:var(--yellow)">S/.0.48 → S/.0.52 → S/.0.55</span> over the last 3 months. Up ~15% in 90 days.</div>
+            </div>
+          </div>
+          <div class="chat-input-row">
+            <input class="chat-input" type="text" placeholder="ask anything about your pantry…">
+            <button class="chat-btn">ASK</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+</div>
+
+</body>
+</html>
