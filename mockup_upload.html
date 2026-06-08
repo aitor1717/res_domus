@@ -47,6 +47,12 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans)}
 .card-label{font-family:var(--mono);font-size:9px;letter-spacing:.08em;color:var(--muted);margin-bottom:11px;display:flex;align-items:center;justify-content:space-between}
 @keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
 
+/* mode toggle */
+.mode-toggle{display:flex;gap:0;margin-bottom:14px;border-radius:4px;overflow:hidden;border:1px solid var(--border);width:fit-content}
+.mode-btn{font-family:var(--mono);font-size:9px;letter-spacing:.05em;padding:6px 16px;cursor:pointer;color:var(--dim2);background:none;border:none;border-right:1px solid var(--border);transition:all .15s;white-space:nowrap}
+.mode-btn:last-child{border-right:none}
+.mode-btn.active{background:rgba(253,151,31,.1);color:var(--orange)}
+
 /* steps */
 .steps{display:flex;margin-bottom:14px;border-radius:4px;overflow:hidden;border:1px solid var(--border)}
 .step-item{flex:1;font-family:var(--mono);font-size:9px;letter-spacing:.05em;padding:6px 10px;color:var(--dim2);border-right:1px solid var(--border);text-align:center;white-space:nowrap}
@@ -66,11 +72,12 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans)}
 .thumb img{width:100%;height:100%;object-fit:cover;border-radius:3px}
 .thumb-name{position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.65);font-family:var(--mono);font-size:8px;color:var(--muted);padding:2px 4px;text-overflow:ellipsis;overflow:hidden;white-space:nowrap}
 
-/* status log */
-.status-log{background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;font-family:var(--mono);font-size:10px;line-height:1.9;margin-bottom:12px}
-.log-ok{color:var(--green)}
-.log-spin{color:var(--orange)}
-.log-dim{color:var(--dim2)}
+/* text entry */
+.text-entry-area{width:100%;min-height:88px;resize:vertical;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:11px 13px;font-family:var(--mono);font-size:12px;color:var(--text);outline:none;transition:border-color .2s;margin-bottom:10px;line-height:1.7}
+.text-entry-area:focus{border-color:var(--orange)}
+.text-entry-area::placeholder{color:var(--dim)}
+.format-hint{background:rgba(102,217,232,.04);border:1px solid rgba(102,217,232,.12);border-radius:5px;padding:9px 12px;font-family:var(--mono);font-size:9px;color:var(--dim2);line-height:2;margin-bottom:12px}
+.format-hint strong{color:var(--cyan)}
 
 /* date form */
 .date-form{display:flex;gap:9px;align-items:flex-end;flex-wrap:wrap;margin-bottom:12px}
@@ -79,6 +86,12 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans)}
 .finput{background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:7px 11px;font-family:var(--mono);font-size:12px;color:var(--text);outline:none;transition:border-color .15s;width:180px}
 .finput:focus{border-color:var(--orange)}
 .date-hint{font-family:var(--mono);font-size:9px;color:var(--cyan);padding-bottom:7px}
+
+/* status log */
+.status-log{background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;font-family:var(--mono);font-size:10px;line-height:1.9;margin-bottom:12px}
+.log-ok{color:var(--green)}
+.log-spin{color:var(--orange)}
+.log-dim{color:var(--dim2)}
 
 /* review table */
 .rtable{width:100%;border-collapse:collapse;table-layout:fixed}
@@ -142,153 +155,225 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans)}
 
 <main class="main">
 
-  <div class="steps" id="steps">
-    <div class="step-item active i18n" id="s1" data-en="1 · upload" data-es="1 · subir">1 · subir</div>
-    <div class="step-item        i18n" id="s2" data-en="2 · date"   data-es="2 · fecha">2 · fecha</div>
-    <div class="step-item        i18n" id="s3" data-en="3 · review" data-es="3 · revisar">3 · revisar</div>
-    <div class="step-item        i18n" id="s4" data-en="4 · done"   data-es="4 · listo">4 · listo</div>
+  <!-- Mode toggle -->
+  <div class="mode-toggle">
+    <button class="mode-btn active" id="modePhoto" onclick="switchMode('photo')">
+      <span class="i18n" data-en="📷 photo" data-es="📷 foto">📷 foto</span>
+    </button>
+    <button class="mode-btn" id="modeText" onclick="switchMode('text')">
+      <span class="i18n" data-en="✎ text entry" data-es="✎ entrada de texto">✎ entrada de texto</span>
+    </button>
   </div>
 
-  <!-- STEP 1: drop zone -->
-  <div id="step1">
-    <div class="card mb">
-      <div class="card-label i18n" data-en="receipts" data-es="recibos">recibos</div>
-      <div class="drop-zone" onclick="advance()">
-        <div class="drop-icon">↑</div>
-        <div class="drop-title i18n" data-en="drag receipts here or click" data-es="arrastra capturas aquí o haz click">arrastra capturas aquí o haz click</div>
-        <div class="drop-sub i18n" data-en="jpg · png · webp · pdf &nbsp;·&nbsp; multiple files OK" data-es="jpg · png · webp · pdf &nbsp;·&nbsp; múltiples archivos OK">jpg · png · webp · pdf &nbsp;·&nbsp; múltiples archivos OK</div>
-      </div>
-      <div class="preview-grid">
-        <div class="thumb">
-          <svg width="72" height="72" viewBox="0 0 72 72" fill="none"><rect width="72" height="72" fill="#2E323C"/><rect x="12" y="10" width="48" height="52" rx="2" fill="#343842"/><rect x="18" y="18" width="36" height="3" rx="1" fill="#454158"/><rect x="18" y="25" width="28" height="2" rx="1" fill="#454158"/><rect x="18" y="31" width="32" height="2" rx="1" fill="#454158"/><rect x="18" y="38" width="20" height="2" rx="1" fill="#454158"/><rect x="18" y="44" width="36" height="3" rx="1" fill="#FD971F" opacity=".5"/><rect x="18" y="51" width="24" height="2" rx="1" fill="#454158"/></svg>
-          <div class="thumb-name">ticket_04jun.jpg</div>
+  <!-- ═══════════════ PHOTO FLOW ═══════════════ -->
+  <div id="photoFlow">
+    <div class="steps" id="steps">
+      <div class="step-item active i18n" id="s1" data-en="1 · upload" data-es="1 · subir">1 · subir</div>
+      <div class="step-item        i18n" id="s2" data-en="2 · date"   data-es="2 · fecha">2 · fecha</div>
+      <div class="step-item        i18n" id="s3" data-en="3 · review" data-es="3 · revisar">3 · revisar</div>
+      <div class="step-item        i18n" id="s4" data-en="4 · done"   data-es="4 · listo">4 · listo</div>
+    </div>
+
+    <!-- STEP 1: drop zone -->
+    <div id="step1">
+      <div class="card mb">
+        <div class="card-label i18n" data-en="receipts" data-es="recibos">recibos</div>
+        <div class="drop-zone" onclick="advance()">
+          <div class="drop-icon">↑</div>
+          <div class="drop-title i18n" data-en="drag receipts here or click" data-es="arrastra capturas aquí o haz click">arrastra capturas aquí o haz click</div>
+          <div class="drop-sub i18n" data-en="jpg · png · webp · pdf &nbsp;·&nbsp; multiple files OK" data-es="jpg · png · webp · pdf &nbsp;·&nbsp; múltiples archivos OK">jpg · png · webp · pdf &nbsp;·&nbsp; múltiples archivos OK</div>
         </div>
-        <div class="thumb">
-          <svg width="72" height="72" viewBox="0 0 72 72" fill="none"><rect width="72" height="72" fill="#2E323C"/><rect x="12" y="10" width="48" height="52" rx="2" fill="#343842"/><rect x="18" y="18" width="36" height="3" rx="1" fill="#454158"/><rect x="18" y="25" width="22" height="2" rx="1" fill="#454158"/><rect x="18" y="31" width="30" height="2" rx="1" fill="#454158"/><rect x="18" y="38" width="36" height="2" rx="1" fill="#454158"/><rect x="18" y="44" width="18" height="2" rx="1" fill="#454158"/><rect x="18" y="50" width="36" height="3" rx="1" fill="#FD971F" opacity=".5"/></svg>
-          <div class="thumb-name">ticket_04jun_2.jpg</div>
+        <div class="preview-grid">
+          <div class="thumb">
+            <svg width="72" height="72" viewBox="0 0 72 72" fill="none"><rect width="72" height="72" fill="#2E323C"/><rect x="12" y="10" width="48" height="52" rx="2" fill="#343842"/><rect x="18" y="18" width="36" height="3" rx="1" fill="#454158"/><rect x="18" y="25" width="28" height="2" rx="1" fill="#454158"/><rect x="18" y="31" width="32" height="2" rx="1" fill="#454158"/><rect x="18" y="38" width="20" height="2" rx="1" fill="#454158"/><rect x="18" y="44" width="36" height="3" rx="1" fill="#FD971F" opacity=".5"/><rect x="18" y="51" width="24" height="2" rx="1" fill="#454158"/></svg>
+            <div class="thumb-name">ticket_04jun.jpg</div>
+          </div>
+          <div class="thumb">
+            <svg width="72" height="72" viewBox="0 0 72 72" fill="none"><rect width="72" height="72" fill="#2E323C"/><rect x="12" y="10" width="48" height="52" rx="2" fill="#343842"/><rect x="18" y="18" width="36" height="3" rx="1" fill="#454158"/><rect x="18" y="25" width="22" height="2" rx="1" fill="#454158"/><rect x="18" y="31" width="30" height="2" rx="1" fill="#454158"/><rect x="18" y="38" width="36" height="2" rx="1" fill="#454158"/><rect x="18" y="44" width="18" height="2" rx="1" fill="#454158"/><rect x="18" y="50" width="36" height="3" rx="1" fill="#FD971F" opacity=".5"/></svg>
+            <div class="thumb-name">ticket_04jun_2.jpg</div>
+          </div>
+        </div>
+        <div class="action-bar" style="border:none;padding-top:4px">
+          <button class="btn btn-cancel i18n" data-en="cancel" data-es="cancelar" onclick="document.location='mockup_dashboard.html'">cancelar</button>
+          <button class="btn btn-next i18n" data-en="next →" data-es="siguiente →" onclick="advance()">siguiente →</button>
         </div>
       </div>
-      <div class="action-bar" style="border:none;padding-top:4px">
-        <button class="btn btn-cancel i18n" data-en="cancel" data-es="cancelar" onclick="document.location='mockup_dashboard.html'">cancelar</button>
-        <button class="btn btn-next i18n" data-en="next →" data-es="siguiente →" onclick="advance()">siguiente →</button>
+    </div>
+
+    <!-- STEP 2: date confirm -->
+    <div id="step2" style="display:none">
+      <div class="card mb">
+        <div class="card-label i18n" data-en="confirm date" data-es="confirmar fecha">confirmar fecha</div>
+        <div class="status-log">
+          <span class="log-ok">✓</span> <span class="i18n" data-en="2 images uploaded" data-es="2 imágenes subidas">2 imágenes subidas</span><br>
+          <span class="log-ok">✓</span> <span class="i18n" data-en="date inferred from filename" data-es="fecha inferida del nombre de archivo">fecha inferida del nombre de archivo</span><br>
+          <span class="log-dim i18n" data-en="waiting for confirmation…" data-es="esperando confirmación…">esperando confirmación…</span>
+        </div>
+        <div class="date-form">
+          <div class="field">
+            <label class="i18n" data-en="RECEIPT DATE" data-es="FECHA DEL RECIBO">FECHA DEL RECIBO</label>
+            <input class="finput" id="dateIn" value="04/06/2026">
+          </div>
+          <div class="date-hint i18n" data-en="accepts: DD/MM/YYYY · DD mon · yesterday · today" data-es="acepta: DD/MM/YYYY · DD mon · ayer · hoy">acepta: DD/MM/YYYY · DD mon · ayer · hoy</div>
+        </div>
+        <div class="action-bar" style="border:none;padding-top:0">
+          <button class="btn btn-cancel i18n" data-en="← back" data-es="← volver" onclick="retreat()">← volver</button>
+          <button class="btn btn-next i18n" data-en="confirm and parse →" data-es="confirmar y parsear →" onclick="advance()">confirmar y parsear →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 3: review (photo) -->
+    <div id="step3" style="display:none">
+      <div class="card mb">
+        <div class="card-label">
+          <span class="i18n" data-en="review items · 04 jun 2026 · PedidosYa" data-es="revisar items · 04 jun 2026 · PedidosYa">revisar items · 04 jun 2026 · PedidosYa</span>
+          <span style="color:var(--dim2)" class="i18n" data-en="6 items · 1 alert" data-es="6 items · 1 alerta">6 items · 1 alerta</span>
+        </div>
+        <div style="overflow-x:auto">
+          <table class="rtable">
+            <colgroup>
+              <col class="c-raw"><col class="c-match"><col class="c-qty">
+              <col class="c-unit"><col class="c-up"><col class="c-tot"><col class="c-note">
+            </colgroup>
+            <thead>
+              <tr>
+                <th class="i18n" data-en="RECEIPT NAME" data-es="NOMBRE RECIBO">NOMBRE RECIBO</th>
+                <th>MATCH</th>
+                <th class="i18n" data-en="QTY" data-es="CANT">CANT</th>
+                <th>UND</th>
+                <th class="i18n" data-en="U.PRICE" data-es="P.UNIT">P.UNIT</th>
+                <th>TOTAL</th>
+                <th class="i18n" data-en="NOTE" data-es="NOTA">NOTA</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td><span class="raw-name">LECHE GLORIA 6X</span></td><td><span class="match-ok">Leche Gloria UHT</span></td><td><span class="num">6</span></td><td>L</td><td><span class="num">3.98</span></td><td><span class="num">23.90</span></td><td style="color:var(--dim2);font-size:9px">pack ×6</td></tr>
+              <tr><td><span class="raw-name">ACEITE PRIMOR 1L</span></td><td><span class="match-ok">Aceite Primor</span></td><td><span class="num">1</span></td><td>L</td><td><span class="num">7.50</span></td><td><span class="num">7.50</span></td><td></td></tr>
+              <tr><td><span class="raw-name">ARROZ COSTENHO BOLSA</span></td><td><span class="match-ok">Arroz Costenho</span></td><td><span class="num">2</span></td><td>kg</td><td><span class="num">4.20</span></td><td><span class="num">8.40</span></td><td></td></tr>
+              <tr><td><span class="raw-name">HUEVOS PARDOS 30U</span></td><td><span class="match-ok">Huevos Pardos 30u</span></td><td><span class="num">1</span></td><td>u</td><td><span class="num">18.90</span></td><td><span class="num">18.90</span></td><td style="color:var(--dim2);font-size:9px">pack 30u</td></tr>
+              <tr><td><span class="raw-name">POLLO ENTERO</span></td><td><span class="match-warn">Pollo Entero</span></td><td><span class="num">1.8</span></td><td>kg</td><td><span class="num">9.50</span></td><td><span class="num">17.10</span></td><td><span class="flag-tag">⚠ ambiguous</span></td></tr>
+              <tr><td><span class="raw-name">PAPA YUNGAY 2KG</span></td><td><span class="match-ok">Papa Amarilla</span></td><td><span class="num">2</span></td><td>kg</td><td><span class="num">2.90</span></td><td><span class="num">5.80</span></td><td></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="review-total">
+          <span>6 items</span>
+          <span>total: <strong>S/.81.60</strong></span>
+        </div>
+        <div class="action-bar">
+          <button class="btn btn-cancel i18n" data-en="← back" data-es="← volver" onclick="retreat()">← volver</button>
+          <button class="btn btn-retry i18n" data-en="retry parse" data-es="reintentar parseo">reintentar parseo</button>
+          <button class="btn btn-confirm i18n" data-en="✓ confirm import" data-es="✓ confirmar importación" onclick="advance()">✓ confirmar importación</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 4: success -->
+    <div id="step4" style="display:none">
+      <div class="card">
+        <div class="success-card">
+          <div class="success-icon">✓</div>
+          <div class="success-title i18n" data-en="6 items imported" data-es="6 items importados">6 items importados</div>
+          <div class="success-sub i18n" data-en="04 jun 2026 · PedidosYa · archived to archive/" data-es="04 jun 2026 · PedidosYa · archivado en archive/">04 jun 2026 · PedidosYa · archivado en archive/</div>
+          <button class="btn btn-next i18n" data-en="→ view dashboard" data-es="→ ver dashboard" onclick="document.location='mockup_dashboard.html'">→ ver dashboard</button>
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- STEP 2: date confirm -->
-  <div id="step2" style="display:none">
-    <div class="card mb">
-      <div class="card-label i18n" data-en="confirm date" data-es="confirmar fecha">confirmar fecha</div>
-      <div class="status-log">
-        <span class="log-ok">✓</span> <span class="i18n" data-en="2 images uploaded" data-es="2 imágenes subidas">2 imágenes subidas</span><br>
-        <span class="log-ok">✓</span> <span class="i18n" data-en="date inferred from filename" data-es="fecha inferida del nombre de archivo">fecha inferida del nombre de archivo</span><br>
-        <span class="log-dim i18n" data-en="waiting for confirmation…" data-es="esperando confirmación…">esperando confirmación…</span>
-      </div>
-      <div class="date-form">
-        <div class="field">
-          <label class="i18n" data-en="RECEIPT DATE" data-es="FECHA DEL RECIBO">FECHA DEL RECIBO</label>
-          <input class="finput" id="dateIn" value="04/06/2026">
+  <!-- ═══════════════ TEXT FLOW ═══════════════ -->
+  <div id="textFlow" style="display:none">
+    <div class="steps">
+      <div class="step-item i18n" id="ts1" data-en="1 · write" data-es="1 · escribir">1 · escribir</div>
+      <div class="step-item i18n" id="ts2" data-en="2 · review" data-es="2 · revisar">2 · revisar</div>
+      <div class="step-item i18n" id="ts3" data-en="3 · done" data-es="3 · listo">3 · listo</div>
+    </div>
+
+    <!-- TEXT STEP 1: write -->
+    <div id="tstep1">
+      <div class="card mb">
+        <div class="card-label i18n" data-en="text entry" data-es="entrada de texto">entrada de texto</div>
+        <textarea class="text-entry-area" id="textEntry"
+          placeholder="2 pollos 18 soles metro ayer&#10;1 leche gloria 3.50 wong&#10;6 huevos 5.90 plaza vea"></textarea>
+        <div class="format-hint" id="formatHint">
+          <strong class="i18n" data-en="format:" data-es="formato:">formato:</strong>
+          <span class="i18n"
+            data-en="[qty] [item] [price] [store?] [date?]  —  one entry per line"
+            data-es="[cant] [item] [precio] [tienda?] [fecha?]  —  una entrada por línea">
+            [cant] [item] [precio] [tienda?] [fecha?]  —  una entrada por línea
+          </span><br>
+          <span style="color:var(--dim2)">
+            <span class="i18n" data-en="e.g.:" data-es="ej:">ej:</span>
+            <span style="color:var(--text)">  2 pollo 18 metro ayer</span> ·
+            <span style="color:var(--text)">  leche gloria 3.50</span> ·
+            <span style="color:var(--text)">  6 huevos 5.90 wong 03/06</span>
+          </span>
         </div>
-        <div class="date-hint i18n" data-en="accepts: DD/MM/YYYY · DD mon · yesterday · today" data-es="acepta: DD/MM/YYYY · DD mon · ayer · today">acepta: DD/MM/YYYY · DD mon · ayer · today</div>
-      </div>
-      <div class="action-bar" style="border:none;padding-top:0">
-        <button class="btn btn-cancel i18n" data-en="← back" data-es="← volver" onclick="retreat()">← volver</button>
-        <button class="btn btn-next i18n" data-en="confirm and parse →" data-es="confirmar y parsear →" onclick="advance()">confirmar y parsear →</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- STEP 3: review -->
-  <div id="step3" style="display:none">
-    <div class="card mb">
-      <div class="card-label">
-        <span>revisar items · 04 jun 2026 · PedidosYa</span>
-        <span style="color:var(--dim2)">6 items · 1 alerta</span>
-      </div>
-      <div style="overflow-x:auto">
-        <table class="rtable">
-          <colgroup>
-            <col class="c-raw"><col class="c-match"><col class="c-qty">
-            <col class="c-unit"><col class="c-up"><col class="c-tot"><col class="c-note">
-          </colgroup>
-          <thead>
-            <tr>
-              <th class="i18n" data-en="RECEIPT NAME" data-es="NOMBRE RECIBO">NOMBRE RECIBO</th><th>MATCH</th><th class="i18n" data-en="QTY" data-es="CANT">CANT</th>
-              <th>UND</th><th class="i18n" data-en="U.PRICE" data-es="P.UNIT">P.UNIT</th><th>TOTAL</th><th class="i18n" data-en="NOTE" data-es="NOTA">NOTA</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td><span class="raw-name">LECHE GLORIA 6X</span></td>
-              <td><span class="match-ok">Leche Gloria UHT</span></td>
-              <td><span class="num">6</span></td><td>L</td>
-              <td><span class="num">3.98</span></td>
-              <td><span class="num">23.90</span></td>
-              <td style="color:var(--dim2);font-size:9px">pack ×6</td>
-            </tr>
-            <tr>
-              <td><span class="raw-name">ACEITE PRIMOR 1L</span></td>
-              <td><span class="match-ok">Aceite Primor</span></td>
-              <td><span class="num">1</span></td><td>L</td>
-              <td><span class="num">7.50</span></td>
-              <td><span class="num">7.50</span></td>
-              <td></td>
-            </tr>
-            <tr>
-              <td><span class="raw-name">ARROZ COSTENHO BOLSA</span></td>
-              <td><span class="match-ok">Arroz Costenho</span></td>
-              <td><span class="num">2</span></td><td>kg</td>
-              <td><span class="num">4.20</span></td>
-              <td><span class="num">8.40</span></td>
-              <td></td>
-            </tr>
-            <tr>
-              <td><span class="raw-name">HUEVOS PARDOS 30U</span></td>
-              <td><span class="match-ok">Huevos Pardos 30u</span></td>
-              <td><span class="num">1</span></td><td>u</td>
-              <td><span class="num">18.90</span></td>
-              <td><span class="num">18.90</span></td>
-              <td style="color:var(--dim2);font-size:9px">pack 30u</td>
-            </tr>
-            <tr>
-              <td><span class="raw-name">POLLO ENTERO</span></td>
-              <td><span class="match-warn">Pollo Entero</span></td>
-              <td><span class="num">1.8</span></td><td>kg</td>
-              <td><span class="num">9.50</span></td>
-              <td><span class="num">17.10</span></td>
-              <td><span class="flag-tag">⚠ ambiguous</span></td>
-            </tr>
-            <tr>
-              <td><span class="raw-name">PAPA YUNGAY 2KG</span></td>
-              <td><span class="match-ok">Papa Amarilla</span></td>
-              <td><span class="num">2</span></td><td>kg</td>
-              <td><span class="num">2.90</span></td>
-              <td><span class="num">5.80</span></td>
-              <td></td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      <div class="review-total">
-        <span>6 items</span>
-        <span>total: <strong>S/.81.60</strong></span>
-      </div>
-      <div class="action-bar">
-        <button class="btn btn-cancel i18n" data-en="← back" data-es="← volver" onclick="retreat()">← volver</button>
-        <button class="btn btn-retry i18n" data-en="retry parse" data-es="reintentar parseo">reintentar parseo</button>
-        <button class="btn btn-confirm i18n" data-en="✓ confirm import" data-es="✓ confirmar importación" onclick="advance()">✓ confirmar importación</button>
+        <div class="date-form">
+          <div class="field">
+            <label class="i18n" data-en="DATE (if not in text)" data-es="FECHA (si no está en el texto)">FECHA (si no está en el texto)</label>
+            <input class="finput" id="textDate" placeholder="hoy / ayer / 04/06">
+          </div>
+        </div>
+        <div class="action-bar" style="border:none;padding-top:4px">
+          <button class="btn btn-cancel i18n" data-en="cancel" data-es="cancelar" onclick="document.location='mockup_dashboard.html'">cancelar</button>
+          <button class="btn btn-next i18n" data-en="parse →" data-es="parsear →" onclick="tadvance()">parsear →</button>
+        </div>
       </div>
     </div>
-  </div>
 
-  <!-- STEP 4: success -->
-  <div id="step4" style="display:none">
-    <div class="card">
-      <div class="success-card">
-        <div class="success-icon">✓</div>
-        <div class="success-title i18n" data-en="6 items imported" data-es="6 items importados">6 items importados</div>
-        <div class="success-sub i18n" data-en="04 jun 2026 · PedidosYa · archived to archive/" data-es="04 jun 2026 · PedidosYa · archivado en archive/">04 jun 2026 · PedidosYa · archivado en archive/</div>
-        <button class="btn btn-next i18n" data-en="→ view dashboard" data-es="→ ver dashboard" onclick="document.location='mockup_dashboard.html'">→ ver dashboard</button>
+    <!-- TEXT STEP 2: review -->
+    <div id="tstep2" style="display:none">
+      <div class="card mb">
+        <div class="card-label">
+          <span class="i18n" data-en="review · text entry · today" data-es="revisar · entrada de texto · hoy">revisar · entrada de texto · hoy</span>
+          <span style="color:var(--dim2)" class="i18n" data-en="3 items" data-es="3 items">3 items</span>
+        </div>
+        <div style="overflow-x:auto">
+          <table class="rtable">
+            <colgroup>
+              <col class="c-raw"><col class="c-match"><col class="c-qty">
+              <col class="c-unit"><col class="c-up"><col class="c-tot"><col class="c-note">
+            </colgroup>
+            <thead>
+              <tr>
+                <th class="i18n" data-en="AS WRITTEN" data-es="COMO ESCRITO">COMO ESCRITO</th>
+                <th>MATCH</th>
+                <th class="i18n" data-en="QTY" data-es="CANT">CANT</th>
+                <th>UND</th>
+                <th class="i18n" data-en="U.PRICE" data-es="P.UNIT">P.UNIT</th>
+                <th>TOTAL</th>
+                <th class="i18n" data-en="NOTE" data-es="NOTA">NOTA</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td><span class="raw-name">2 pollos 18 metro ayer</span></td><td><span class="match-ok">Pollo Entero</span></td><td><span class="num">2</span></td><td>kg</td><td><span class="num">9.00</span></td><td><span class="num">18.00</span></td><td style="color:var(--dim2);font-size:9px">ayer</td></tr>
+              <tr><td><span class="raw-name">leche gloria 3.50 wong</span></td><td><span class="match-ok">Leche Gloria UHT</span></td><td><span class="num">1</span></td><td>L</td><td><span class="num">3.50</span></td><td><span class="num">3.50</span></td><td></td></tr>
+              <tr><td><span class="raw-name">6 huevos 5.90 plaza vea</span></td><td><span class="match-ok">Huevos Pardos 30u</span></td><td><span class="num">6</span></td><td>u</td><td><span class="num">0.98</span></td><td><span class="num">5.90</span></td><td style="color:var(--dim2);font-size:9px">plaza vea</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="review-total">
+          <span>3 items</span>
+          <span>total: <strong>S/.27.40</strong></span>
+        </div>
+        <div class="action-bar">
+          <button class="btn btn-cancel i18n" data-en="← back" data-es="← volver" onclick="tretreat()">← volver</button>
+          <button class="btn btn-confirm i18n" data-en="✓ confirm import" data-es="✓ confirmar importación" onclick="tadvance()">✓ confirmar importación</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- TEXT STEP 3: success -->
+    <div id="tstep3" style="display:none">
+      <div class="card">
+        <div class="success-card">
+          <div class="success-icon">✓</div>
+          <div class="success-title i18n" data-en="3 items imported" data-es="3 items importados">3 items importados</div>
+          <div class="success-sub i18n" data-en="text entry · today · saved" data-es="entrada de texto · hoy · guardado">entrada de texto · hoy · guardado</div>
+          <button class="btn btn-next i18n" data-en="→ view dashboard" data-es="→ ver dashboard" onclick="document.location='mockup_dashboard.html'">→ ver dashboard</button>
+        </div>
       </div>
     </div>
   </div>
@@ -303,24 +388,58 @@ function setLang(l) {
   localStorage.setItem('lang', l);
   document.querySelectorAll('.lang-btn').forEach(b => b.classList.toggle('active', b.dataset.lang === l));
   document.querySelectorAll('.i18n').forEach(el => { if (el.dataset[l]) el.textContent = el.dataset[l]; });
+  const ta = document.getElementById('textEntry');
+  if (ta) ta.placeholder = l === 'en'
+    ? '2 chickens 18 soles metro yesterday\n1 gloria milk 3.50 wong\n6 eggs 5.90 plaza vea'
+    : '2 pollos 18 soles metro ayer\n1 leche gloria 3.50 wong\n6 huevos 5.90 plaza vea';
+  const td = document.getElementById('textDate');
+  if (td) td.placeholder = l === 'en' ? 'today / yesterday / 04/06' : 'hoy / ayer / 04/06';
 }
 
+/* ── Photo flow ── */
 const STEPS = ['step1','step2','step3','step4'];
 const SBTNS = ['s1','s2','s3','s4'];
 let cur = 0;
-
 function show(i) {
   STEPS.forEach((id,j) => {
     document.getElementById(id).style.display = j === i ? '' : 'none';
     const sb = document.getElementById(SBTNS[j]);
-    sb.className = 'step-item' + (j < i ? ' done' : j === i ? ' active' : '');
+    if (sb) sb.className = 'step-item i18n' + (j < i ? ' done' : j === i ? ' active' : '');
   });
   cur = i;
 }
 function advance() { if (cur < STEPS.length-1) show(cur+1); }
 function retreat() { if (cur > 0) show(cur-1); }
 
+/* ── Text flow ── */
+const TSTEPS = ['tstep1','tstep2','tstep3'];
+const TSBTNS = ['ts1','ts2','ts3'];
+let tcur = 0;
+function tshow(i) {
+  TSTEPS.forEach((id,j) => {
+    document.getElementById(id).style.display = j === i ? '' : 'none';
+    const sb = document.getElementById(TSBTNS[j]);
+    if (sb) sb.className = 'step-item i18n' + (j < i ? ' done' : j === i ? ' active' : '');
+  });
+  tcur = i;
+}
+function tadvance() { if (tcur < TSTEPS.length-1) tshow(tcur+1); }
+function tretreat() { if (tcur > 0) tshow(tcur-1); }
+
+/* ── Mode switch ── */
+let mode = 'photo';
+function switchMode(m) {
+  mode = m;
+  document.getElementById('photoFlow').style.display = m === 'photo' ? '' : 'none';
+  document.getElementById('textFlow').style.display  = m === 'text'  ? '' : 'none';
+  document.getElementById('modePhoto').classList.toggle('active', m === 'photo');
+  document.getElementById('modeText').classList.toggle('active', m === 'text');
+  if (m === 'text') tshow(0);
+  else show(0);
+}
+
 show(0);
+tshow(0);
 setLang(lang);
 </script>
 </body>

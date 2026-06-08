@@ -21,6 +21,11 @@ OUTPUT_DIR  = BASE_DIR / "output"
 SECRET_KEY  = os.environ.get("SECRET_KEY", "change-me-in-production")
 DEBUG       = os.environ.get("FLASK_DEBUG", "0") == "1"
 
+# Turso (optional — leave blank to use local SQLite)
+# Get from: turso db show <db-name> --url  and  turso db tokens create <db-name>
+TURSO_URL   = os.environ.get("TURSO_URL", "")
+TURSO_TOKEN = os.environ.get("TURSO_TOKEN", "")
+
 # WhatsApp Cloud API (optional — leave blank to disable webhook)
 # Get these from Meta Business > WhatsApp > API Setup
 WHATSAPP_VERIFY_TOKEN = os.environ.get("WHATSAPP_VERIFY_TOKEN", "")
