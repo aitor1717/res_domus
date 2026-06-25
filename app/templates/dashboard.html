@@ -1,0 +1,265 @@
+{% extends "base.html" %}
+{% block title %}res_domus{% endblock %}
+{% block nav_home %}active-page{% endblock %}
+
+{% block head_extra %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block styles %}
+<style>
+  .dash-grid {
+    display: grid; grid-template-columns: 1fr; gap: 12px;
+    grid-template-areas: "budget" "chartn" "topspend" "recent" "chat";
+  }
+  @media (min-width: 900px) {
+    .dash-grid { grid-template-columns: 1fr 1fr;
+      grid-template-areas: "budget chartn" "topspend recent" "chat chat"; }
+  }
+  .block-budget { grid-area: budget; display: flex; flex-direction: column; }
+  .block-chart  { grid-area: chartn; display: flex; flex-direction: column; }
+  .meterspanel  { grid-area: topspend; }
+  .recentpanel  { grid-area: recent; }
+  .chatpanel    { grid-area: chat; }
+
+  /* ── BUDGET: two rings + trimmed meta ── */
+  .ringsrow { display: flex; justify-content: center; gap: 30px; }
+  .ringbox { text-align: center; }
+  .ringbox .ringcap { font-size: 10.5px; color: var(--dim2); margin-top: 7px; text-transform: uppercase; letter-spacing: .04em; }
+  .ringbox .ringmeta { font-size: 12px; color: var(--dim2); margin-top: 6px; text-shadow: 0 0 4px rgba(255,157,110,.3); }
+  .ringbox .ringmeta b { color: var(--bright); font-size: 13px; }
+  .ring-gauge text { font-family: var(--mono); font-weight: 700; }
+  .curr-ring { font-size: 10px; }
+
+  /* ── KPI STRIP ── */
+  .kpigrid { display: grid; grid-template-columns: 1fr 1fr; flex: 1; margin-top: 14px; }
+  .kpicell { padding: 10px 14px; border-top: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .kpicell:nth-child(odd) { border-right: 1px solid var(--border); }
+  .kpi-val { font-size: 21px; font-weight: 700; color: var(--bright); text-shadow: 0 0 4px rgba(255,157,110,.35); }
+  .curr-kpi { font-size: 18px; }
+  .kpi-right { display: flex; flex-direction: column; align-items: flex-end; justify-content: center; gap: 3px; }
+  .kpi-lbl { font-size: 9.5px; color: var(--dim2); text-transform: uppercase; }
+  .kpi-delta { font-size: 11px; color: var(--green); }
+  .up { color: var(--green); }
+  .down { color: var(--pink); }
+  .flat { color: var(--dim2); }
+
+  /* ── CHART ── */
+  .chart-wrap { position: relative; height: 200px; }
+  .chart-legend { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 9px; }
+  .leg { display: flex; align-items: center; gap: 5px; font-family: var(--mono); font-size: 9px; color: var(--dim2); }
+  .leg-line { width: 18px; height: 2px; border-radius: 1px; flex-shrink: 0; }
+  .leg-line.dash { background: repeating-linear-gradient(90deg, var(--lc) 0, var(--lc) 4px, transparent 4px, transparent 8px); }
+  .leg-line.thin { height: 1px; }
+  .divider { border-top: 1px solid var(--border); margin-top: 14px; padding-top: 14px; }
+
+  /* ── NEEDED SOON ── */
+  .needed-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px 4px; }
+  .needed-tag { grid-column: 1 / -1; font-family: var(--mono); font-size: 11px; padding: 9px 13px; border-radius: 8px; border: 1px solid; }
+  .needed-ok { color: var(--green); background: rgba(255,224,163,.08); border-color: rgba(255,224,163,.3); }
+  .needed-nodata { color: var(--dim2); background: rgba(255,157,110,.04); border-color: var(--border); }
+  .ni { display: flex; flex-direction: column; align-items: center; text-align: center; animation: fadeUp .4s ease var(--nd, 0s) both; }
+  .ni.ni-extra { display: none; }
+  .ni.ni-extra.shown { display: flex; }
+  .ni-circ { position: relative; width: 56px; height: 56px; margin-bottom: 4px; }
+  .ni-circ svg { width: 100%; height: 100%; display: block; }
+  .ni-arc { stroke-dasharray: 100; stroke-dashoffset: 100; transition: stroke-dashoffset .7s cubic-bezier(.4,0,.2,1); }
+  .ni-val { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); font-family: var(--mono); font-size: 11px; font-weight: 700; color: var(--bright); line-height: 1; pointer-events: none; }
+  .ni-name { font-size: 9px; color: var(--dim2); margin-top: 4px; }
+  .seemore-row { margin-top: 13px; }
+  .seemore-tab {
+    display: block; width: 100%; text-align: center; font-size: 10.5px; color: var(--dim2);
+    border: 1px dashed var(--border); border-radius: 5px; padding: 7px 0; cursor: pointer; background: none; font-family: var(--mono);
+  }
+  .seemore-tab::before { content: '⌄ '; }
+
+  /* shared restore bar: covers topspend+recent when chat or needed-soon expands */
+  .restore-tabs { display: none; gap: 8px; padding: 14px 15px; }
+  .dash-grid.expanded .meterspanel,
+  .dash-grid.expanded .recentpanel { display: none; }
+  .dash-grid.expanded .restore-tabs { display: flex; grid-area: topspend / topspend / recent / recent; }
+  @media (min-width: 900px) { .dash-grid.expanded .restore-tabs { grid-column: 1 / -1; } }
+  .restore-tabs span { font-size: 10.5px; color: var(--dim2); border: 1px dashed var(--border); border-radius: 5px; padding: 5px 10px; cursor: pointer; }
+  .restore-tabs span::before { content: '⌄ '; }
+
+  /* ── TOP SPEND / RECENT ── */
+  .ti-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; font-family: var(--mono); font-size: 11.5px; }
+  .ti-name { width: 90px; flex-shrink: 0; color: var(--bright2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ti-bar { flex: 1; height: 9px; background: rgba(255,157,110,.1); border-radius: 2px; overflow: hidden; }
+  .ti-fill { display: block; height: 100%; background: var(--orange); transform-origin: left; animation: growX .55s cubic-bezier(.4,0,.2,1) both; }
+  .ti-pct { width: 32px; text-align: right; font-family: var(--mono); font-size: 11px; color: var(--dim2); }
+
+  /* ── TABLE ── */
+  table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  col.col-date  { width: 52px; }
+  col.col-total { width: 66px; }
+  col.col-entry { width: 50px; }
+  th { font-family: var(--mono); font-size: 9px; letter-spacing: .07em; color: var(--dim2); text-align: left; padding: 0 9px 7px 0; border-bottom: 1px solid var(--border); white-space: nowrap; position: sticky; top: 0; background: var(--bg); }
+  th:last-child { padding-right: 0; }
+  td { padding: 6px 9px 6px 0; border-bottom: 1px solid var(--border); font-family: var(--mono); font-size: 11px; color: var(--dim2); vertical-align: middle; white-space: nowrap; }
+  td:last-child { padding-right: 0; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(255,157,110,.025); }
+  .td-store { font-size: 11px; color: var(--bright2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
+  .td-price { color: var(--bright); font-weight: 600; }
+  .badge { display: inline-block; font-family: var(--mono); font-size: 9px; letter-spacing: .03em; padding: 2px 6px; border-radius: 6px; }
+
+  /* ── CHAT: glowing separate card ── */
+  .card-chat { border: 1px solid rgba(255,157,110,.35); box-shadow: 0 0 16px rgba(255,157,110,.22), 0 0 2px rgba(255,157,110,.4); }
+  .chat-msgs { display: flex; flex-direction: column; gap: 7px; max-height: 130px; overflow-y: auto; margin-bottom: 10px; padding-right: 4px; transition: max-height .25s ease; }
+  .chat-msgs.expanded { max-height: 360px; }
+  .chat-msgs::-webkit-scrollbar { width: 3px; }
+  .chat-msgs::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  .msg { max-width: 90%; padding: 8px 11px; border-radius: 10px; font-family: var(--mono); font-size: 11px; line-height: 1.65; }
+  .msg-u { align-self: flex-end; background: rgba(255,157,110,.1); border: 1px solid rgba(255,157,110,.25); color: var(--bright2); }
+  .msg-b { align-self: flex-start; background: var(--surface2); border: 1px solid var(--border); color: var(--bright); }
+  .msg-b .hi  { color: var(--orange); }
+  .msg-b .ok  { color: var(--green); }
+  .msg-b .up  { color: var(--pink); }
+  .msg-b .lo  { color: var(--cyan); }
+  .draft-card { max-width: 100%; width: 100%; }
+  .draft-title { color: var(--dim2); margin-bottom: 7px; }
+  .draft-table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+  .draft-table td { padding: 3px 4px; border-bottom: none; }
+  .draft-table input { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 5px; padding: 3px 6px; font-family: var(--mono); font-size: 10px; color: var(--text); outline: none; }
+  .draft-table input:focus { border-color: var(--orange); }
+  .draft-actions { display: flex; gap: 7px; }
+  .draft-btn { font-family: var(--mono); font-size: 9px; padding: 5px 12px; border-radius: 6px; cursor: pointer; border: 1px solid; background: none; }
+  .draft-confirm { color: var(--green); border-color: rgba(255,224,163,.3); }
+  .draft-confirm:hover { background: rgba(255,224,163,.12); }
+  .draft-cancel { color: var(--dim2); border-color: var(--border); }
+  .draft-cancel:hover { background: rgba(255,157,110,.04); }
+  .chat-row { display: flex; gap: 7px; }
+  .chat-input { flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 8px 11px; font-family: var(--mono); font-size: 11px; color: var(--text); outline: none; transition: border-color .15s; }
+  .chat-input::placeholder { color: var(--dim); }
+  .chat-input:focus { border-color: var(--orange); }
+  .chat-send { width: 28px; height: 28px; flex-shrink: 0; border-radius: 50%; background: none; border: 1.5px solid rgba(255,157,110,.45); cursor: pointer; transition: background .15s, border-color .15s; display: flex; align-items: center; justify-content: center; }
+  .chat-send::after { content: ''; width: 11px; height: 11px; border-radius: 50%; background: var(--orange); opacity: .85; transition: opacity .15s; }
+  .chat-send:hover { border-color: rgba(255,157,110,.75); }
+  .chat-send:hover::after { opacity: 1; }
+
+  @media (max-width: 640px) {
+    .chart-wrap { height: 160px; }
+  }
+</style>
+{% endblock %}
+
+{% block topbar_period %}
+  <div class="tab-group" id="period-tabs">
+    <div class="tab active" onclick="setPeriod(this,'30d')">30d</div>
+    <div class="tab" onclick="setPeriod(this,'90d')">90d</div>
+    <div class="tab" onclick="setPeriod(this,'all')">all</div>
+  </div>
+{% endblock %}
+
+{% block main %}
+<div class="dash-grid" id="dashGrid">
+
+  <!-- BUDGET + KPI -->
+  <div class="card block-budget">
+    <div class="card-label" id="lbl-budget">presupuesto</div>
+    <div class="ringsrow">
+      <div class="ringbox">
+        <svg class="ring-gauge" id="ringBudget" width="112" height="112" viewBox="0 0 112 112"></svg>
+        <div class="ringcap" id="lbl-ring-budget">budget used</div>
+        <div class="ringmeta" id="ringmeta-spent"></div>
+      </div>
+      <div class="ringbox">
+        <svg class="ring-gauge" id="ringDeviation" width="112" height="112" viewBox="0 0 112 112"></svg>
+        <div class="ringcap" id="lbl-ring-dev">vs 30d avg</div>
+        <div class="ringmeta" id="ringmeta-days"></div>
+      </div>
+    </div>
+    <div class="kpigrid">
+      <div class="kpicell">
+        <div class="kpi-val" id="kpi-total"><span class="curr-kpi">S/.</span>—</div>
+        <div class="kpi-right"><span class="kpi-lbl i18n" data-en="this month" data-es="este mes">este mes</span><span class="kpi-delta" id="kpi-total-delta">—</span></div>
+      </div>
+      <div class="kpicell">
+        <div class="kpi-val" id="kpi-orders">—</div>
+        <div class="kpi-right"><span class="kpi-lbl i18n" data-en="orders" data-es="pedidos">pedidos</span><span class="kpi-delta" id="kpi-orders-delta">—</span></div>
+      </div>
+      <div class="kpicell">
+        <div class="kpi-val" id="kpi-avg"><span class="curr-kpi">S/.</span>—</div>
+        <div class="kpi-right"><span class="kpi-lbl i18n" data-en="avg ticket" data-es="ticket promedio">ticket promedio</span><span class="kpi-delta" id="kpi-avg-delta">—</span></div>
+      </div>
+      <div class="kpicell">
+        <div class="kpi-val" id="kpi-tracked">—</div>
+        <div class="kpi-right"><span class="kpi-lbl i18n" data-en="items" data-es="artículos">artículos</span><span class="kpi-delta" id="kpi-tracked-delta">—</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CHART + NEEDED SOON -->
+  <div class="card block-chart">
+    <div class="card-label">
+      <span id="lbl-chart">gasto mensual</span>
+      <span style="color:var(--pink);font-size:8px" id="lbl-anomaly"></span>
+    </div>
+    <div class="chart-wrap"><canvas id="chart"></canvas></div>
+    <div class="chart-legend">
+      <div class="leg"><div class="leg-line" style="background:var(--orange)"></div><span id="leg-total">total</span></div>
+      <div class="leg"><div class="leg-line dash" style="--lc:var(--bright2)"></div>abarrotes</div>
+      <div class="leg"><div class="leg-line dash" style="--lc:var(--pink)"></div>carnes</div>
+      <div class="leg"><div class="leg-line thin" style="background:var(--green)"></div><span id="leg-delivery">delivery + servicio</span></div>
+    </div>
+    <div class="divider">
+      <div class="card-label" id="lbl-needed">por agotar</div>
+      <div class="needed-grid" id="neededGrid"></div>
+      <div class="seemore-row">
+        <button class="seemore-tab" id="needExpBtn" onclick="toggleNeeded()" style="display:none">
+          <span id="needExpLabel">ver más</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOP SPEND -->
+  <div class="card meterspanel">
+    <div class="card-label" id="lbl-bycat">mayor gasto · este mes</div>
+    <div class="top-items-list" id="topItemsList"></div>
+  </div>
+
+  <!-- RECENT PURCHASES -->
+  <div class="card recentpanel">
+    <div class="card-label" id="lbl-recent">últimas compras</div>
+    <div class="table-wrap">
+      <table>
+        <colgroup>
+          <col class="col-date"><col><col class="col-total"><col class="col-entry">
+        </colgroup>
+        <thead>
+          <tr>
+            <th class="i18n" data-en="Date" data-es="Fecha">Fecha</th>
+            <th class="i18n" data-en="Store" data-es="Tienda">Tienda</th>
+            <th class="i18n" data-en="Total" data-es="Total">Total</th>
+            <th class="i18n" data-en="Entry" data-es="Entrada">Entrada</th>
+          </tr>
+        </thead>
+        <tbody id="ordersBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card restore-tabs"><span data-restore>top_spend</span><span data-restore>recent_purchases</span></div>
+
+  <!-- CHAT -->
+  <div class="card card-chat chatpanel" id="chatPanel">
+    <div class="card-label" id="lbl-chat">manager</div>
+    <div class="chat-msgs" id="chatMsgs"></div>
+    <div class="chat-row">
+      <input class="chat-input" id="chatIn" type="text"
+        placeholder="consulta sobre precios, listas, urgencias, tendencias…"
+        onkeydown="sendMsg(event)"
+        onfocus="onChatFocus()"
+        onblur="onChatBlur()">
+      <button class="chat-send" onclick="sendMsg({key:'Enter'})"></button>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/dashboard.js"></script>
+{% endblock %}

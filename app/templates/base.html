@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}res_domus{% endblock %} — household tracker</title>
+  <meta name="description" content="res_domus: household grocery tracker. Receipt parsing, spending trends, inventory urgency, budget tracking.">
+  <link rel="manifest" href="/static/manifest.json">
+  <meta name="theme-color" content="#17161A">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  {% block head_extra %}{% endblock %}
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:         #17161A;
+      --surface:    rgba(255,157,110,.03);
+      --surface2:   rgba(255,157,110,.1);
+      --border:     rgba(255,157,110,.22);
+      --text:       #FF9D6E;
+      --muted:      rgba(255,157,110,.52);
+      --dim:        rgba(255,157,110,.35);
+      --dim2:       rgba(255,157,110,.52);
+      --bright:     #FFFBFC;
+      --bright2:    #FFC2D6;
+      --pink:       #FF6F91;
+      --cyan:       #FFC2D6;
+      --green:      #FFE0A3;
+      --yellow:     #FFE0A3;
+      --purple:     #FFC2D6;
+      --orange:     #FF9D6E;
+      --r:          12px;
+      --sans:       'IBM Plex Mono', monospace;
+      --mono:       'IBM Plex Mono', 'Courier New', monospace;
+    }
+    html, body { height: 100%; position: relative; }
+    body { background: var(--bg); color: var(--text); font-family: var(--mono); text-shadow: 0 0 5px rgba(255,157,110,.25); }
+    body::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: repeating-linear-gradient(0deg, rgba(0,0,0,0) 0, rgba(0,0,0,0) 3px, rgba(0,0,0,.12) 4px);
+      pointer-events: none; z-index: 9998;
+    }
+    body::after {
+      content: '';
+      position: absolute; inset: 0;
+      background: radial-gradient(ellipse at center, transparent 68%, rgba(0,0,0,.3) 100%);
+      pointer-events: none; z-index: 9999;
+    }
+    @media (min-width: 641px) {
+      html, body { overflow: hidden; }
+      .app { display: flex; flex-direction: column; height: 100vh; }
+      .main { flex: 1; overflow-y: auto; }
+    }
+    @media (max-width: 640px) {
+      .app { display: flex; flex-direction: column; min-height: 100vh; }
+      .main { flex: 1; }
+    }
+
+    /* ── TOPBAR: shaded card, three centered lines ── */
+    .topbar {
+      background: rgba(255,157,110,.05);
+      border-bottom: 1px solid var(--border);
+      padding: 11px 16px 12px;
+      flex-shrink: 0; z-index: 100;
+    }
+    .tb-line1 { text-align: center; }
+    .wordmark { font-family: var(--mono); font-size: 11px; font-weight: 600; letter-spacing: .02em; color: var(--bright); user-select: none; text-decoration: none; }
+    .top-tag { font-family: var(--mono); font-size: 11px; color: var(--bright); font-weight: 600; }
+    .tb-line2 {
+      display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px;
+      margin-top: 9px;
+    }
+    .nav-btns { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+    .nb {
+      font-family: var(--mono); font-size: 12px;
+      padding: 3px 8px; border-radius: 4px; border: 1px solid transparent; cursor: pointer;
+      background: none; transition: background .15s, color .15s; white-space: nowrap;
+      text-decoration: none; color: var(--dim2);
+    }
+    .nb.active-page, .nb:hover { color: var(--bright2); background: rgba(255,157,110,.16); }
+
+    .tb-line3 { display: flex; justify-content: center; align-items: center; gap: 28px; margin-top: 9px; flex-wrap: wrap; }
+    .tab-group { display: flex; gap: 4px; flex-shrink: 0; }
+    .tab {
+      font-family: var(--mono); font-size: 12px; padding: 3px 7px; border-radius: 4px;
+      cursor: pointer; color: var(--dim2); border: 1px solid transparent;
+      background: none; transition: all .15s; white-space: nowrap;
+    }
+    .tab:hover { color: var(--bright2); }
+    .tab.active { color: var(--bright2); background: rgba(255,157,110,.16); }
+    .lang-btn.active { color: var(--bright2); background: rgba(255,157,110,.16); }
+    .top-sep, .top-spacer { display: none; }
+
+    /* ── MAIN ── */
+    .main { padding: 16px 18px 56px; }
+    .card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--r); padding: 14px;
+    }
+    .mb { margin-bottom: 12px; }
+    .card-label {
+      font-family: var(--mono); font-size: 11px; letter-spacing: .05em; color: var(--dim2);
+      text-transform: uppercase; text-shadow: 0 0 4px rgba(255,157,110,.4);
+      margin-bottom: 11px; display: flex; align-items: center; justify-content: space-between;
+    }
+    .card-label::before { content: '┌─ '; }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes growX  { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+    @media (max-width: 640px) {
+      .main { padding: 14px 12px 48px; }
+      .topbar { padding: 10px 12px; }
+    }
+
+    /* ── AI KEY BANNER ── */
+    .ai-banner {
+      display: none; font-family: var(--mono); font-size: 10px; color: var(--orange);
+      background: rgba(255,157,110,.07); border-bottom: 1px solid var(--border);
+      padding: 7px 20px; text-align: center; flex-shrink: 0;
+    }
+    .ai-banner a { color: var(--bright2); text-decoration: underline; }
+  </style>
+  {% block styles %}{% endblock %}
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="tb-line1">
+      <a class="wordmark" href="/" style="text-decoration:none"><span class="top-tag">domus_01 @ lima_pe</span></a>
+    </div>
+    <div class="tb-line2">
+      <nav class="nav-btns">
+        <a href="/" class="nb nb-home {% block nav_home %}{% endblock %}">dashboard</a>
+        <a href="/upload" class="nb nb-up {% block nav_upload %}{% endblock %}">upload</a>
+        <a href="/items" class="nb nb-lib {% block nav_items %}{% endblock %}">library</a>
+        <a href="/register" class="nb nb-reg {% block nav_register %}{% endblock %}">register</a>
+        <a href="/settings" class="nb nb-set {% block nav_settings %}{% endblock %}">settings</a>
+      </nav>
+    </div>
+    <div class="tb-line3">
+      <div class="tab-group">
+        <div class="tab lang-btn" data-lang="es" onclick="setLang('es')">es</div>
+        <div class="tab lang-btn" data-lang="en" onclick="setLang('en')">en</div>
+      </div>
+      {% block topbar_period %}{% endblock %}
+    </div>
+    {% block topbar_extra %}{% endblock %}
+  </header>
+
+  <div class="ai-banner" id="aiBanner"></div>
+
+  <main class="main">
+    {% block main %}{% endblock %}
+  </main>
+</div>
+<script>
+var AI_BANNER_TXT = {
+  en: 'AI features (receipt parsing &amp; chat) need an API key — <a href="/settings">add one in Settings</a>.',
+  es: 'Las funciones IA (parseo de recibos y chat) necesitan una clave API — <a href="/settings">agrégala en Configuración</a>.',
+};
+function updateAiBanner(l) {
+  var el = document.getElementById('aiBanner');
+  if (el && el.dataset.show === '1') el.innerHTML = AI_BANNER_TXT[l] || AI_BANNER_TXT.en;
+}
+function setLang(l) {
+  localStorage.setItem('lang', l);
+  document.querySelectorAll('.lang-btn').forEach(b => b.classList.toggle('active', b.dataset.lang === l));
+  document.querySelectorAll('.i18n').forEach(el => { if (el.dataset[l]) el.textContent = el.dataset[l]; });
+  updateAiBanner(l);
+}
+(function() {
+  var l = localStorage.getItem('lang') || 'en';
+  document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.lang-btn').forEach(b => b.classList.toggle('active', b.dataset.lang === l));
+    document.querySelectorAll('.i18n').forEach(el => { if (el.dataset[l]) el.textContent = el.dataset[l]; });
+  });
+})();
+if (!location.pathname.startsWith('/settings')) {
+  fetch('/api/settings/api-key').then(function(r) { return r.json(); }).then(function(d) {
+    if (!d.configured) {
+      var el = document.getElementById('aiBanner');
+      el.dataset.show = '1';
+      el.style.display = 'block';
+      updateAiBanner(localStorage.getItem('lang') || 'en');
+    }
+  }).catch(function() {});
+}
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function() {
+    navigator.serviceWorker.register('/sw.js');
+  });
+}
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

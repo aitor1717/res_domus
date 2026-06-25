@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+{% block title %}register{% endblock %}
+{% block nav_register %}active-page{% endblock %}
+
+{% block styles %}
+<style>
+  .reg-wrap { max-width: 1000px; margin: 0 auto; }
+  .reg-controls { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; align-items: center; }
+  .reg-range-group { display: flex; gap: 3px; flex-shrink: 0; }
+  .reg-range-btn {
+    font-family: var(--mono); font-size: 9px; padding: 7px 11px; border-radius: 8px;
+    cursor: pointer; color: var(--dim2); border: 1px solid var(--border); background: var(--surface2);
+    transition: all .15s; white-space: nowrap;
+  }
+  .reg-range-btn:hover { color: var(--muted); }
+  .reg-range-btn.active { color: var(--green); background: rgba(255,224,163,.08); border-color: rgba(255,224,163,.22); }
+  .reg-date-input {
+    padding: 7px 10px; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; font-family: var(--mono); font-size: 11px; color: var(--text); outline: none;
+  }
+  .reg-date-input:focus { border-color: var(--green); }
+  .search-input {
+    flex: 1; min-width: 160px; padding: 8px 12px; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; font-family: var(--mono); font-size: 11px; color: var(--text); outline: none;
+  }
+  .search-input:focus { border-color: var(--cyan); }
+  .search-input::placeholder { color: var(--dim); }
+
+  .lib-table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 11px; }
+  .lib-table th { padding: 6px 10px; border-bottom: 1px solid var(--border); color: var(--dim2); font-size: 9px; text-align: left; white-space: nowrap; position: sticky; top: 0; background: var(--surface); }
+  .lib-table td { padding: 7px 10px; border-bottom: 1px solid rgba(255,157,110,.3); color: var(--muted); vertical-align: middle; }
+  .lib-table tr:hover td { background: rgba(255,255,255,.018); }
+  .lib-table tr:last-child td { border-bottom: none; }
+  .item-name { color: var(--text); font-size: 12px; }
+  .cat-badge { display: inline-block; padding: 2px 7px; border-radius: 6px; font-size: 9px; background: rgba(255,194,214,.08); border: 1px solid rgba(255,194,214,.18); color: var(--cyan); white-space: nowrap; }
+  .reg-total { color: var(--text); font-family: var(--mono); }
+  .reg-summary { font-family: var(--mono); font-size: 10px; color: var(--dim2); margin-bottom: 10px; }
+  .reg-summary .hi { color: var(--green); }
+
+  .empty-state { text-align: center; padding: 48px; font-family: var(--mono); font-size: 11px; color: var(--dim2); }
+
+  .act-btn { background: none; border: none; cursor: pointer; font-family: var(--mono); font-size: 10px; padding: 3px 7px; border-radius: 6px; transition: background .15s; }
+  .act-edit { color: var(--yellow); }
+  .act-edit:hover { background: rgba(255,224,163,.08); }
+  .act-del  { color: var(--pink); }
+  .act-del:hover  { background: rgba(255,111,145,.08); }
+
+  /* edit modal */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 200; align-items: center; justify-content: center; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 24px; min-width: 360px; max-width: 560px; width: 92%; }
+  .modal-title { font-family: var(--mono); font-size: 10px; color: var(--muted); margin-bottom: 16px; letter-spacing: .06em; }
+  .field-group { margin-bottom: 11px; }
+  .field-label { font-family: var(--mono); font-size: 9px; color: var(--dim2); margin-bottom: 4px; }
+  .field-input {
+    width: 100%; padding: 7px 10px; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; font-family: var(--mono); font-size: 11px; color: var(--text); outline: none;
+  }
+  .field-input:focus { border-color: var(--green); }
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .modal-btns { display: flex; gap: 8px; margin-top: 16px; }
+  .modal-save { flex: 1; padding: 9px; background: rgba(255,224,163,.1); border: 1px solid rgba(255,224,163,.28); border-radius: 8px; font-family: var(--mono); font-size: 10px; color: var(--green); cursor: pointer; }
+  .modal-save:hover { background: rgba(255,224,163,.18); }
+  .modal-cancel { padding: 9px 14px; background: none; border: 1px solid var(--border); border-radius: 8px; font-family: var(--mono); font-size: 10px; color: var(--dim2); cursor: pointer; }
+  .modal-cancel:hover { border-color: var(--muted); }
+</style>
+{% endblock %}
+
+{% block main %}
+<div class="reg-wrap">
+  <div class="card">
+    <div class="card-label i18n" data-en="register" data-es="registro">register</div>
+    <div class="reg-controls">
+      <div class="reg-range-group" id="rangeGroup">
+        <button class="reg-range-btn" data-range="7" onclick="setRange(7)">7d</button>
+        <button class="reg-range-btn" data-range="30" onclick="setRange(30)">30d</button>
+        <button class="reg-range-btn" data-range="90" onclick="setRange(90)">90d</button>
+      </div>
+      <input type="date" class="reg-date-input" id="startDate" onchange="setCustomRange()">
+      <span style="color:var(--dim2);font-family:var(--mono);font-size:10px">→</span>
+      <input type="date" class="reg-date-input" id="endDate" onchange="setCustomRange()">
+      <input class="search-input i18n" id="searchInput" data-en="search item, category…" data-es="buscar item, categoría…" placeholder="buscar item, categoría…" oninput="searchEntries(this.value)">
+    </div>
+    <div class="reg-summary" id="regSummary"></div>
+    <div style="overflow-x:auto">
+      <table class="lib-table">
+        <thead>
+          <tr>
+            <th class="i18n" data-en="Date" data-es="Fecha">Fecha</th>
+            <th>Item</th>
+            <th class="i18n" data-en="Category" data-es="Categoría">Categoría</th>
+            <th class="i18n" data-en="Qty." data-es="Cant.">Cant.</th>
+            <th class="i18n" data-en="U.price" data-es="P. unit.">P. unit.</th>
+            <th>Total</th>
+            <th class="i18n" data-en="Source" data-es="Fuente">Fuente</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="regBody">
+          <tr><td colspan="8"><div class="empty-state i18n" data-en="loading…" data-es="cargando…">cargando…</div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Edit modal -->
+<div class="modal-overlay" id="entryModal">
+  <div class="modal">
+    <div class="modal-title i18n" data-en="edit entry" data-es="editar entrada">edit entry</div>
+    <input type="hidden" id="editId">
+    <div class="field-row">
+      <div class="field-group">
+        <div class="field-label">ITEM *</div>
+        <input class="field-input" id="fRawName" placeholder="Huevos">
+      </div>
+      <div class="field-group">
+        <div class="field-label i18n" data-en="MATCH (canon id)" data-es="MATCH (id canon)">MATCH (canon id)</div>
+        <input class="field-input" id="fMatchedId" placeholder="Huevos">
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field-group">
+        <div class="field-label i18n" data-en="CATEGORY" data-es="CATEGORÍA">CATEGORY</div>
+        <input class="field-input" id="fCategory" placeholder="Abarrotes">
+      </div>
+      <div class="field-group">
+        <div class="field-label i18n" data-en="DATE" data-es="FECHA">DATE</div>
+        <input type="date" class="field-input" id="fDate">
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field-group">
+        <div class="field-label i18n" data-en="QUANTITY" data-es="CANTIDAD">QUANTITY</div>
+        <input class="field-input" id="fQuantity" placeholder="1">
+      </div>
+      <div class="field-group">
+        <div class="field-label i18n" data-en="TOTAL PRICE" data-es="PRECIO TOTAL">TOTAL PRICE</div>
+        <input class="field-input" id="fTotalPrice" placeholder="0.00">
+      </div>
+    </div>
+    <div class="field-group">
+      <div class="field-label i18n" data-en="SOURCE" data-es="FUENTE">SOURCE</div>
+      <input class="field-input" id="fSource" placeholder="PedidosYa">
+    </div>
+    <div class="modal-btns">
+      <button class="modal-cancel i18n" data-en="cancel" data-es="cancelar" onclick="closeModal()">cancel</button>
+      <button class="modal-save i18n" data-en="save" data-es="guardar" onclick="saveEntry()">save</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/register.js"></script>
+{% endblock %}

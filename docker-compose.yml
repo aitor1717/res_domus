@@ -1,16 +1,39 @@
 services:
   app:
-    build: .
+    build: ./app
+    expose:
+      - "5000"
     ports:
       - "5000:5000"
     volumes:
-      - ./res_domus.db:/app/res_domus.db
-      - ./aux_items.csv:/app/aux_items.csv
-      - ./input:/app/input
-      - ./review:/app/review
-      - ./archive:/app/archive
-      - ./output:/app/output
+      - ./data:/data
+      - ./app/aux_items.csv:/app/aux_items.csv
     environment:
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - SECRET_KEY=${SECRET_KEY:-change-me}
+      - BASIC_AUTH_USER=${BASIC_AUTH_USER:-}
+      - BASIC_AUTH_PASS=${BASIC_AUTH_PASS:-}
     restart: unless-stopped
+
+  # Optional reverse proxy for automatic HTTPS — only needed if you're exposing
+  # this to the internet with a domain. Local/LAN use doesn't need it.
+  # Enable with: docker compose --profile https up
+  caddy:
+    image: caddy:2-alpine
+    profiles: ["https"]
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    environment:
+      - DOMAIN=${DOMAIN:-localhost}
+    depends_on:
+      - app
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:
