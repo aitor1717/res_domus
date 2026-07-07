@@ -5,15 +5,28 @@ let sessionId = null;
 let evtSource = null;
 
 const UP_ST = {
-  en: { saveToLib: '+ save', saved: '✓ saved', saveErr: 'error saving',
-        confirmName: 'item name for the library (edit to simplify, e.g. "platano de seda" → "platano"):' },
-  es: { saveToLib: '+ guardar', saved: '✓ guardado', saveErr: 'error al guardar',
-        confirmName: 'nombre del item para la biblioteca (edita para simplificar, ej. "platano de seda" → "platano"):' },
+  en: {
+    saveToLib: '+ save', saved: '✓ saved', saveErr: 'error saving',
+    confirmName: 'item name for the library (edit to simplify, e.g. "platano de seda" → "platano"):',
+    uploading: 'uploading images…', connecting: 'connecting…', processing: 'processing…',
+    noDate: 'date not detected', badDate: 'Could not parse the date',
+    uploadErr: 'error uploading', parseErr: 'error parsing', importErr: 'error importing',
+    confirmingDate: 'confirming date…',
+  },
+  es: {
+    saveToLib: '+ guardar', saved: '✓ guardado', saveErr: 'error al guardar',
+    confirmName: 'nombre del item para la biblioteca (edita para simplificar, ej. "platano de seda" → "platano"):',
+    uploading: 'subiendo imágenes…', connecting: 'conectando…', processing: 'procesando…',
+    noDate: 'fecha no detectada', badDate: 'No se pudo interpretar la fecha',
+    uploadErr: 'error al subir', parseErr: 'error al parsear', importErr: 'error al importar',
+    confirmingDate: 'confirmando fecha…',
+  },
 };
 function ut(key) {
   const lang = localStorage.getItem('lang') || 'en';
   return (UP_ST[lang] || UP_ST.en)[key];
 }
+function ulang() { return localStorage.getItem('lang') || 'en'; }
 
 /* ── FILE SELECTION ── */
 function handleFiles(files) {
@@ -43,14 +56,14 @@ function renderPreviews() {
 async function startUpload() {
   if (!selectedFiles.length) return;
 
-  setStatus('subiendo imágenes…');
+  setStatus(ut('uploading'));
   const fd = new FormData();
   selectedFiles.forEach(f => fd.append('images', f));
 
   const res = await fetch('/api/upload/files', { method: 'POST', body: fd });
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
-    setStatus(data.error || 'error al subir', true);
+    setStatus(data.error || ut('uploadErr'), true);
     return;
   }
 
@@ -61,7 +74,7 @@ async function startUpload() {
 
 /* ── SSE STREAM ── */
 function listenSSE() {
-  setStatus('conectando…');
+  setStatus(ut('connecting'));
   evtSource = new EventSource(`/api/upload/parse-status/${sessionId}`);
 
   evtSource.addEventListener('date', e => {
@@ -71,20 +84,22 @@ function listenSSE() {
 
   evtSource.addEventListener('progress', e => {
     const d = JSON.parse(e.data);
-    setStatus(d.message || 'procesando…');
+    setStatus(d.message || ut('processing'));
   });
 
   evtSource.addEventListener('done', e => {
     const d = JSON.parse(e.data);
     evtSource.close();
-    setStatus(`${d.count} items parseados — revisa y confirma`);
+    setStatus(ulang() === 'es'
+      ? `${d.count} items parseados — revisa y confirma`
+      : `${d.count} items parsed — review & confirm`);
     showReview(d.items);
   });
 
   evtSource.addEventListener('error', e => {
     const d = JSON.parse(e.data || '{}');
     evtSource.close();
-    setStatus(d.message || 'error al parsear', true);
+    setStatus(d.message || ut('parseErr'), true);
   });
 }
 
@@ -97,7 +112,7 @@ function showDateModal(inferredStr, wasInferred) {
     const MES = ['','ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
     lbl.textContent = `${d.getDate()} ${MES[d.getMonth()+1]} ${d.getFullYear()}`;
   } else {
-    lbl.textContent = 'fecha no detectada';
+    lbl.textContent = ut('noDate');
   }
   modal.classList.add('open');
 }
@@ -109,13 +124,13 @@ async function confirmDate() {
   let dateStr = null;
   if (override) {
     dateStr = parseUserDate(override);
-    if (!dateStr) { alert('No se pudo interpretar la fecha'); return; }
+    if (!dateStr) { alert(ut('badDate')); return; }
   } else {
     dateStr = inferredDateIso();
   }
 
   modal.classList.remove('open');
-  setStatus('confirmando fecha…');
+  setStatus(ut('confirmingDate'));
 
   await fetch('/api/upload/confirm-date', {
     method: 'POST',
@@ -238,13 +253,13 @@ async function confirmImport() {
   });
   const data = await res.json();
   if (res.ok) {
-    setStatus(`importado: ${data.message}`);
+    setStatus(ulang() === 'es' ? `importado: ${data.message}` : `imported: ${data.message}`);
     document.getElementById('reviewSection').classList.remove('open');
     selectedFiles = [];
     document.getElementById('previewGrid').innerHTML = '';
     document.getElementById('uploadBtn').disabled = true;
   } else {
-    setStatus(data.error || 'error al importar', true);
+    setStatus(data.error || ut('importErr'), true);
   }
 }
 

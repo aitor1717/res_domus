@@ -34,6 +34,28 @@ def _next_id(rows: list[dict]) -> int:
     return max(ids, default=0) + 1
 
 
+@bp.get("/suggestions")
+def item_suggestions():
+    """Return top unmatched raw_names from purchases — candidates to add to the library."""
+    import sqlite3
+    from flask import current_app as _app
+    try:
+        conn = sqlite3.connect(_app.config["DB_PATH"])
+        cur = conn.execute("""
+            SELECT raw_name, COUNT(*) AS cnt
+            FROM purchases
+            WHERE matched_id IS NULL AND raw_name != 'TOTAL'
+            GROUP BY raw_name
+            ORDER BY cnt DESC
+            LIMIT 4
+        """)
+        rows = [{"raw_name": r[0], "count": r[1]} for r in cur.fetchall()]
+        conn.close()
+    except Exception:
+        rows = []
+    return jsonify(rows)
+
+
 @bp.get("")
 def list_items():
     q = (request.args.get("q") or "").lower().strip()

@@ -139,6 +139,26 @@ function esc(s) {
   return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
+/* ── SUGGESTED CANON ── */
+async function loadSuggestions() {
+  const suggestions = await fetch('/api/items/suggestions').then(r => r.json()).catch(() => []);
+  const box   = document.getElementById('canonSuggest');
+  const chips = document.getElementById('canonChips');
+  if (!suggestions.length || !box || !chips) return;
+  chips.innerHTML = suggestions.map(s =>
+    `<div class="canon-chip" onclick="openSuggestion(${JSON.stringify(s.raw_name).replace(/"/g,'&quot;')})">
+       ${esc(s.raw_name)}<span class="chip-cnt">×${s.count}</span>
+     </div>`
+  ).join('');
+  box.style.display = '';
+}
+
+function openSuggestion(rawName) {
+  openModal(null);
+  document.getElementById('fItem').value = rawName;
+  document.getElementById('fSyn').value  = rawName.toLowerCase();
+}
+
 /* ── INIT ── */
 document.addEventListener('DOMContentLoaded', () => {
   const si = document.getElementById('searchInput');
@@ -146,3 +166,4 @@ document.addEventListener('DOMContentLoaded', () => {
   setLang(lang);
 });
 loadItems();
+loadSuggestions();

@@ -33,13 +33,20 @@ function isoLocal(d) {
 
 /* ── RANGE ── */
 function setRange(days) {
-  const end = new Date();
-  const start = new Date(end);
-  start.setDate(start.getDate() - days);
-  currentStart = isoLocal(start);
-  currentEnd = isoLocal(end);
-  document.getElementById('startDate').value = currentStart;
-  document.getElementById('endDate').value = currentEnd;
+  if (days === 'all') {
+    currentStart = null;
+    currentEnd = null;
+    document.getElementById('startDate').value = '';
+    document.getElementById('endDate').value = '';
+  } else {
+    const end = new Date();
+    const start = new Date(end);
+    start.setDate(start.getDate() - days);
+    currentStart = isoLocal(start);
+    currentEnd = isoLocal(end);
+    document.getElementById('startDate').value = currentStart;
+    document.getElementById('endDate').value = currentEnd;
+  }
   document.querySelectorAll('.reg-range-btn').forEach(b => b.classList.toggle('active', b.dataset.range === String(days)));
   loadEntries();
 }

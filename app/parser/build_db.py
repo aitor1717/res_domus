@@ -88,7 +88,7 @@ last_qty AS (
 SELECT
     s.matched_id, b.matched_category, b.matched_subcategory, b.tags, b.unit,
     s.purchase_count,
-    s.purchase_count >= 5                                                AS is_reliable,
+    s.purchase_count >= 3                                                AS is_reliable,
     ROUND(s.avg_unit_price, 4)                                          AS avg_unit_price,
     ROUND(s.std_unit_price, 4)                                          AS std_unit_price,
     ROUND(s.min_unit_price, 4)                                          AS min_unit_price,

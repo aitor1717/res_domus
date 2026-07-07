@@ -19,6 +19,10 @@
     cursor: pointer; transition: background .15s;
   }
   .save-btn:hover { background: rgba(255,157,110,.2); }
+  /* Hide browser number spinners on the budget input */
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  input[type="number"] { -moz-appearance: textfield; }
   .section-title { font-family: var(--mono); font-size: 9px; letter-spacing: .08em; color: var(--muted); margin-bottom: 14px; }
   .status-msg { font-family: var(--mono); font-size: 10px; margin-top: 8px; }
   .ok { color: var(--green); }
@@ -38,7 +42,7 @@
 
   <!-- AI Manager -->
   <div class="card mb">
-    <div class="section-title i18n" data-en="AI MANAGER" data-es="GESTOR IA">GESTOR IA</div>
+    <div class="card-label i18n" data-en="AI MANAGER" data-es="GESTOR IA">GESTOR IA</div>
     <div class="setting-row">
       <div class="setting-label i18n" data-en="Anthropic API key" data-es="Clave API de Anthropic">Clave API de Anthropic</div>
       <input class="setting-input" id="apiKeyInput" type="password" placeholder="sk-ant-...">
@@ -54,7 +58,7 @@
 
   <!-- Budget -->
   <div class="card mb">
-    <div class="section-title i18n" data-en="MONTHLY BUDGET" data-es="PRESUPUESTO MENSUAL">PRESUPUESTO MENSUAL</div>
+    <div class="card-label i18n" data-en="MONTHLY BUDGET" data-es="PRESUPUESTO MENSUAL">PRESUPUESTO MENSUAL</div>
     <div class="setting-row">
       <div class="setting-label i18n" data-en="Spending limit (S/.)" data-es="Límite de gasto (S/.)">Límite de gasto (S/.)</div>
       <input class="setting-input" id="budgetInput" type="number" min="0" step="10" placeholder="—">
@@ -70,7 +74,7 @@
 
   <!-- DB tools -->
   <div class="card mb">
-    <div class="section-title i18n" data-en="DATABASE" data-es="BASE DE DATOS">BASE DE DATOS</div>
+    <div class="card-label i18n" data-en="DATABASE" data-es="BASE DE DATOS">BASE DE DATOS</div>
     <div class="setting-row">
       <div class="setting-label i18n" data-en="Re-import CSVs from review/" data-es="Reimportar CSVs de review/">Reimportar CSVs de review/</div>
       <button class="import-btn i18n" data-en="reimport now" data-es="reimportar ahora" onclick="runImport()">reimportar ahora</button>
@@ -78,12 +82,21 @@
     <div class="status-msg" id="importStatus"></div>
   </div>
 
+  <!-- Export -->
+  <div class="card mb">
+    <div class="card-label i18n" data-en="EXPORT" data-es="EXPORTAR">EXPORTAR</div>
+    <div class="setting-row">
+      <div class="setting-label i18n" data-en="Download all purchases as Excel" data-es="Descargar compras como Excel">Descargar compras como Excel</div>
+      <a class="save-btn i18n" id="exportBtn" data-en="export xlsx" data-es="exportar xlsx" href="/api/settings/export" download style="text-decoration:none;display:inline-block">exportar xlsx</a>
+    </div>
+  </div>
+
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-  const lang = localStorage.getItem('lang') || 'en';
+  let lang = localStorage.getItem('lang') || 'en';
   const ST = {
     en: {
       saved: 'saved', saveErr: 'error saving', importing: 'importing…',
@@ -103,9 +116,12 @@
   function st(k) { return (ST[lang] || ST.en)[k]; }
 
   window.setLang = function(l) {
+    lang = l;
     localStorage.setItem('lang', l);
     document.querySelectorAll('.lang-btn').forEach(b => b.classList.toggle('active', b.dataset.lang === l));
     document.querySelectorAll('.i18n').forEach(el => { if (el.dataset[l]) el.textContent = el.dataset[l]; });
+    // Re-render dynamic status text in new language
+    checkApiKeyStatus();
   };
 
   async function saveBudget() {

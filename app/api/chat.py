@@ -4,6 +4,7 @@ against the DB → Claude formats a short answer. See parser/prompts.py for
 the SQL-assistant system prompt and schema description.
 """
 
+import calendar
 import json
 import re
 import sqlite3
@@ -85,11 +86,34 @@ def _extract_json_array(text: str) -> str:
 
 
 _PURCHASE_CUES_RE = re.compile(
-    r"\b(bought|spent|spend|purchase[d]?|register|log|cost|paid|pay|"
-    r"compr[éeo]|gast[éeo]|pagu[éeo]|registr[ao]|cuesta|cuest[oó])\b"
+    r"\b(bought|got|grabbed|picked\s+up|received|spent|spend|purchase[d]?|register|log|cost|paid|pay|"
+    r"compr[éeo]|gast[éeo]|pagu[éeo]|registr[ao]|recib[io]|traje|llev[eéo]|cuesta|cuest[oó])\b"
     r"|\d",
     re.IGNORECASE,
 )
+
+_DATA_CUES_RE = re.compile(
+    r"\b(spent|spend|pric|cost|total|budget|month|last|"
+    r"how much|how many|categor|list|top|most|recent|order|stock|"
+    r"running|low|when|what|which|where|averag|avg|histor|trend|"
+    r"anomal|cheap|expens|buy|bought|inflat|sav|worth|store|market|"
+    r"gast|preci|cuant|cuánt|barrat|caro|barato|presupuest)",
+    re.IGNORECASE,
+)
+
+_SMALLTALK_REDIRECT = {
+    "en": "Warehouse manager ready. Ask me about spending, prices, what's running low, or log a purchase.",
+    "es": "Gestor listo. Pregunta sobre gastos, precios, artículos por agotar, o registra una compra.",
+}
+
+
+def _is_smalltalk(message: str) -> bool:
+    """True when the message has no data-question cues and is short enough
+    to be a greeting, ack, or meta-instruction rather than a real query."""
+    words = message.split()
+    if len(words) > 4:
+        return False
+    return not _DATA_CUES_RE.search(message) and not _PURCHASE_CUES_RE.search(message)
 
 
 def _looks_like_purchase(message: str) -> bool:
@@ -199,21 +223,56 @@ def _log_chat_entry(question: str) -> None:
         t.start()
 
 
-def answer_question(question: str, db_path: str, lang: str = "en") -> dict:
+def _get_context_prefix(db_path: str) -> str:
+    """Build a short date+budget snippet injected as the first turn of every chat session."""
+    today = date.today()
+    days_left = calendar.monthrange(today.year, today.month)[1] - today.day
+    ctx = (f"[CONTEXT] Today: {today.isoformat()}. "
+           f"Current month: {today.strftime('%Y-%m')}. "
+           f"{days_left} days remaining this month.")
+    try:
+        conn = sqlite3.connect(db_path)
+        row = conn.execute(
+            "SELECT spent_this_month, effective_budget, pct_of_budget FROM v_budget"
+        ).fetchone()
+        conn.close()
+        if row and row[1]:
+            spent, budget, pct = row
+            ctx += (f" Budget: S/.{budget:.2f}. "
+                    f"Spent so far: S/.{spent or 0:.2f} ({pct or 0}%).")
+    except Exception:
+        pass
+    return ctx
+
+
+def answer_question(question: str, db_path: str, lang: str = "en", history: list | None = None) -> dict:
     """Run the full NL→SQL→answer pipeline. Returns {answer, sql, rows}."""
     api_key = get_anthropic_key(db_path, current_app.config["ANTHROPIC_API_KEY"])
     if not api_key:
         return {"answer": NO_KEY_MSG, "sql": None, "rows": [], "no_api_key": True}
 
+    if _is_smalltalk(question):
+        return {"answer": _SMALLTALK_REDIRECT.get(lang, _SMALLTALK_REDIRECT["en"]), "sql": None, "rows": []}
+
     client = anthropic.Anthropic(api_key=api_key)
     model = current_app.config["MODEL_CHAT"]
+    system_block = [{"type": "text", "text": SQL_ASSISTANT_SYSTEM, "cache_control": {"type": "ephemeral"}}]
+
+    # Build messages: context prefix + prior history (last 6 turns) + current question
+    context_prefix = _get_context_prefix(db_path)
+    messages: list[dict] = [
+        {"role": "user",      "content": context_prefix},
+        {"role": "assistant", "content": "Ready."},
+    ]
+    for turn in (history or [])[-6:]:
+        if turn.get("role") in ("user", "assistant") and turn.get("content"):
+            messages.append({"role": turn["role"], "content": turn["content"]})
+    messages.append({"role": "user", "content": question})
 
     try:
         sql_resp = client.messages.create(
-            model=model,
-            max_tokens=512,
-            system=[{"type": "text", "text": SQL_ASSISTANT_SYSTEM, "cache_control": {"type": "ephemeral"}}],
-            messages=[{"role": "user", "content": question}],
+            model=model, max_tokens=512,
+            system=system_block, messages=messages,
         )
     except anthropic.APIError as e:
         raise RuntimeError(f"Claude API error: {e}") from e
@@ -226,8 +285,26 @@ def answer_question(question: str, db_path: str, lang: str = "en") -> dict:
         try:
             cur = conn.execute(sql)
             rows = _rows_as_dicts(cur)
-        except sqlite3.Error:
-            sql_failed = True
+        except sqlite3.Error as db_err:
+            # Retry once with the error message so Claude can correct the query
+            retry_msgs = messages + [
+                {"role": "assistant", "content": sql},
+                {"role": "user",      "content": f"That query failed: {db_err}. Generate a corrected SELECT query."},
+            ]
+            try:
+                retry_resp = client.messages.create(
+                    model=model, max_tokens=512,
+                    system=system_block, messages=retry_msgs,
+                )
+                sql2 = _extract_sql(retry_resp.content[0].text)
+                if sql2 != "CANNOT_ANSWER" and sql2.upper().startswith("SELECT"):
+                    cur2 = conn.execute(sql2)
+                    rows = _rows_as_dicts(cur2)
+                    sql = sql2
+                else:
+                    sql_failed = True
+            except Exception:
+                sql_failed = True
         finally:
             conn.close()
 
@@ -247,11 +324,11 @@ def answer_question(question: str, db_path: str, lang: str = "en") -> dict:
         return {"answer": msg, "sql": None, "rows": []}
 
     low_data_hint = not rows and bool(_RELIABILITY_GATED_RE.search(sql))
-    format_prompt = build_sql_format_prompt(question, sql, rows, low_data_hint)
+    format_prompt = build_sql_format_prompt(question, sql, rows, low_data_hint, lang)
     try:
         fmt_resp = client.messages.create(
             model=model,
-            max_tokens=256,
+            max_tokens=180,
             messages=[{"role": "user", "content": format_prompt}],
         )
     except anthropic.APIError as e:
@@ -259,18 +336,77 @@ def answer_question(question: str, db_path: str, lang: str = "en") -> dict:
     return {"answer": fmt_resp.content[0].text.strip(), "sql": sql, "rows": rows}
 
 
+def _get_notice(db_path: str, lang: str = "en") -> str | None:
+    """Return one terse session-opener notice if something is noteworthy, else None."""
+    try:
+        conn = sqlite3.connect(db_path)
+        today = date.today()
+        days_left = calendar.monthrange(today.year, today.month)[1] - today.day
+
+        # Priority 1: budget >= 80%
+        row = conn.execute(
+            "SELECT pct_of_budget, effective_budget FROM v_budget"
+        ).fetchone()
+        if row and row[0] and row[0] >= 80:
+            pct = int(row[0])
+            if lang == "es":
+                return f"Presupuesto al {pct}% — quedan {days_left} días."
+            return f"Budget at {pct}% — {days_left} days remaining."
+
+        # Priority 2: price anomaly in last 7 days
+        row = conn.execute(
+            "SELECT matched_id, direction, datetime FROM v_anomalies "
+            "WHERE datetime >= date('now','-7 days') "
+            "ORDER BY datetime DESC LIMIT 1"
+        ).fetchone()
+        if row:
+            item, direction, dt = row
+            if lang == "es":
+                adj = "inusualmente alto" if direction == "high" else "inusualmente bajo"
+                return f"{item} tuvo un precio {adj} el {dt}."
+            adj = "unusually high" if direction == "high" else "unusually low"
+            return f"{item} had a {adj} price on {dt}."
+
+        # Priority 3: item 90+ days overdue
+        row = conn.execute(
+            "SELECT matched_id, ROUND(days_since_last - avg_interval_days, 0) AS overdue "
+            "FROM v_item_stats "
+            "WHERE is_reliable = 1 AND days_since_last - avg_interval_days > 90 "
+            "  AND LOWER(COALESCE(matched_category,'')) NOT IN ('delivery','courier','servicio') "
+            "ORDER BY overdue DESC LIMIT 1"
+        ).fetchone()
+        if row:
+            item, days = row[0], int(row[1])
+            if lang == "es":
+                return f"{item} lleva {days} días de retraso."
+            return f"{item} is {days} days overdue."
+
+        conn.close()
+    except Exception:
+        pass
+    return None
+
+
+@bp.get("/notice")
+def chat_notice():
+    lang = request.args.get("lang", "en")
+    notice = _get_notice(current_app.config["DB_PATH"], lang)
+    return jsonify({"notice": notice})
+
+
 @bp.post("/query")
 def query():
     data = request.get_json(force=True)
     question = (data.get("question") or "").strip()
     lang = data.get("lang") or "en"
+    history = data.get("history") or []
     if not question:
         return jsonify({"error": "question required"}), 400
 
     _log_chat_entry(question)
 
     try:
-        result = answer_question(question, current_app.config["DB_PATH"], lang)
+        result = answer_question(question, current_app.config["DB_PATH"], lang, history)
     except RuntimeError as e:
         current_app.logger.exception("chat query failed")
         return jsonify({"error": str(e)}), 500

@@ -37,7 +37,7 @@
   /* modal */
   .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 200; align-items: center; justify-content: center; }
   .modal-overlay.open { display: flex; }
-  .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 24px; min-width: 360px; max-width: 560px; width: 92%; }
+  .modal { background: #1D1B21; border: 1px solid var(--border); border-radius: 12px; padding: 24px; min-width: 360px; max-width: 560px; width: 92%; }
   .modal-title { font-family: var(--mono); font-size: 10px; color: var(--muted); margin-bottom: 16px; letter-spacing: .06em; }
   .field-group { margin-bottom: 11px; }
   .field-label { font-family: var(--mono); font-size: 9px; color: var(--dim2); margin-bottom: 4px; }
@@ -55,11 +55,26 @@
   .modal-cancel:hover { border-color: var(--muted); }
 
   .empty-state { text-align: center; padding: 48px; font-family: var(--mono); font-size: 11px; color: var(--dim2); }
+
+  /* suggested canon strip */
+  .canon-suggest { margin-bottom: 14px; padding: 11px 13px; border-radius: 8px; border: 1px solid rgba(255,224,163,.18); background: rgba(255,224,163,.04); }
+  .canon-suggest-lbl { font-family: var(--mono); font-size: 9px; color: var(--dim2); letter-spacing: .06em; text-transform: uppercase; margin-bottom: 8px; }
+  .canon-chips { display: flex; gap: 7px; flex-wrap: wrap; }
+  .canon-chip { font-family: var(--mono); font-size: 10px; padding: 5px 11px; border-radius: 20px; border: 1px solid rgba(255,224,163,.3); background: rgba(255,224,163,.07); color: var(--green); cursor: pointer; transition: background .15s; white-space: nowrap; }
+  .canon-chip:hover { background: rgba(255,224,163,.16); }
+  .canon-chip .chip-cnt { font-size: 8.5px; color: var(--dim2); margin-left: 4px; }
 </style>
 {% endblock %}
 
 {% block main %}
 <div class="items-wrap">
+
+  <!-- Suggested canon items (unmatched, frequently purchased) -->
+  <div class="canon-suggest" id="canonSuggest" style="display:none">
+    <div class="canon-suggest-lbl i18n" data-en="frequent unmatched items — click to add" data-es="items frecuentes sin catalogar — click para agregar">items frecuentes sin catalogar — click para agregar</div>
+    <div class="canon-chips" id="canonChips"></div>
+  </div>
+
   <div class="card">
     <div class="card-label i18n" data-en="item library" data-es="biblioteca de items">biblioteca de items</div>
     <div class="search-row">

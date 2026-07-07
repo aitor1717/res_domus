@@ -58,20 +58,31 @@
       .main { flex: 1; }
     }
 
-    /* ── TOPBAR: shaded card, three centered lines ── */
+    /* ── TOPBAR ──
+       Line 1: [period tabs · LEFT] [nav buttons · CENTER] [lang tabs · RIGHT]
+       Line 2: wordmark centered
+       3-column minmax grid keeps nav truly centered even when period tabs are
+       absent (non-dashboard pages — the left cell is just empty space). */
     .topbar {
       background: rgba(255,157,110,.05);
       border-bottom: 1px solid var(--border);
-      padding: 11px 16px 12px;
+      padding: 10px 16px 11px;
       flex-shrink: 0; z-index: 100;
     }
-    .tb-line1 { text-align: center; }
-    .wordmark { font-family: var(--mono); font-size: 11px; font-weight: 600; letter-spacing: .02em; color: var(--bright); user-select: none; text-decoration: none; }
-    .top-tag { font-family: var(--mono); font-size: 11px; color: var(--bright); font-weight: 600; }
-    .tb-line2 {
-      display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px;
-      margin-top: 9px;
+    .tb-line1 {
+      display: grid;
+      grid-template-columns: minmax(0,1fr) auto minmax(0,1fr);
+      align-items: start;
+      gap: 6px;
     }
+    .tb-side { display: flex; min-width: 0; }
+    .tb-side-left  { justify-content: flex-start; }
+    .tb-side-right { justify-content: flex-end; }
+    .tb-line2 { text-align: center; margin-top: 8px; }
+
+    .wordmark { font-family: var(--mono); font-size: 11px; font-weight: 600; letter-spacing: .02em; color: var(--bright); user-select: none; text-decoration: none; }
+    .top-tag  { font-family: var(--mono); font-size: 11px; color: var(--bright); font-weight: 600; }
+
     .nav-btns { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
     .nb {
       font-family: var(--mono); font-size: 12px;
@@ -81,7 +92,6 @@
     }
     .nb.active-page, .nb:hover { color: var(--bright2); background: rgba(255,157,110,.16); }
 
-    .tb-line3 { display: flex; justify-content: center; align-items: center; gap: 28px; margin-top: 9px; flex-wrap: wrap; }
     .tab-group { display: flex; gap: 4px; flex-shrink: 0; }
     .tab {
       font-family: var(--mono); font-size: 12px; padding: 3px 7px; border-radius: 4px;
@@ -91,7 +101,6 @@
     .tab:hover { color: var(--bright2); }
     .tab.active { color: var(--bright2); background: rgba(255,157,110,.16); }
     .lang-btn.active { color: var(--bright2); background: rgba(255,157,110,.16); }
-    .top-sep, .top-spacer { display: none; }
 
     /* ── MAIN ── */
     .main { padding: 16px 18px 56px; }
@@ -100,18 +109,22 @@
       border-radius: var(--r); padding: 14px;
     }
     .mb { margin-bottom: 12px; }
+
+    /* Card label: title on LEFT, corner glyph on RIGHT.
+       ::after carries the ─┐ corner so flex space-between pushes it right. */
     .card-label {
       font-family: var(--mono); font-size: 11px; letter-spacing: .05em; color: var(--dim2);
       text-transform: uppercase; text-shadow: 0 0 4px rgba(255,157,110,.4);
       margin-bottom: 11px; display: flex; align-items: center; justify-content: space-between;
     }
-    .card-label::before { content: '┌─ '; }
+    .card-label::after { content: ' ─┐'; flex-shrink: 0; }
+
     @keyframes fadeUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
     @keyframes growX  { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 
     @media (max-width: 640px) {
       .main { padding: 14px 12px 48px; }
-      .topbar { padding: 10px 12px; }
+      .topbar { padding: 9px 12px 10px; }
     }
 
     /* ── AI KEY BANNER ── */
@@ -128,9 +141,7 @@
 <div class="app">
   <header class="topbar">
     <div class="tb-line1">
-      <a class="wordmark" href="/" style="text-decoration:none"><span class="top-tag">domus_01 @ lima_pe</span></a>
-    </div>
-    <div class="tb-line2">
+      <div class="tb-side tb-side-left">{% block topbar_period %}{% endblock %}</div>
       <nav class="nav-btns">
         <a href="/" class="nb nb-home {% block nav_home %}{% endblock %}">dashboard</a>
         <a href="/upload" class="nb nb-up {% block nav_upload %}{% endblock %}">upload</a>
@@ -138,13 +149,15 @@
         <a href="/register" class="nb nb-reg {% block nav_register %}{% endblock %}">register</a>
         <a href="/settings" class="nb nb-set {% block nav_settings %}{% endblock %}">settings</a>
       </nav>
-    </div>
-    <div class="tb-line3">
-      <div class="tab-group">
-        <div class="tab lang-btn" data-lang="es" onclick="setLang('es')">es</div>
-        <div class="tab lang-btn" data-lang="en" onclick="setLang('en')">en</div>
+      <div class="tb-side tb-side-right">
+        <div class="tab-group">
+          <div class="tab lang-btn" data-lang="es" onclick="setLang('es')">es</div>
+          <div class="tab lang-btn" data-lang="en" onclick="setLang('en')">en</div>
+        </div>
       </div>
-      {% block topbar_period %}{% endblock %}
+    </div>
+    <div class="tb-line2">
+      <a class="wordmark" href="/" style="text-decoration:none"><span class="top-tag">domus_01 @ lima_pe</span></a>
     </div>
     {% block topbar_extra %}{% endblock %}
   </header>

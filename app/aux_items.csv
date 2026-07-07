@@ -23,7 +23,7 @@ id,item,unit,category,subcategory,synonyms,notes,tags
 23,Milanesa de Pollo,u,Carnes,Carnes,,,
 24,Hamburguesa,u,Carnes,Carnes,,,
 25,Filete de Pescado,kg,Carnes,Carnes,,Bonito,
-26,Azúcar,kg,Abarrotes,Abarrotes,,,
+26,Azúcar,kg,Abarrotes,Abarrotes,,,important
 27,Arroz,kg,Abarrotes,Abarrotes,,,
 28,Leche,latas,Abarrotes,Abarrotes,,,
 29,Huevos,u,Abarrotes,Abarrotes,,,

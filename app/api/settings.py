@@ -3,9 +3,10 @@ Settings endpoints: manual monthly budget overrides, Anthropic API key
 storage/status, and manual re-import of review/output CSVs into the DB.
 """
 
+import io
 import sqlite3
 from pathlib import Path
-from flask import Blueprint, jsonify, request, current_app
+from flask import Blueprint, jsonify, request, current_app, send_file
 
 from db_settings import get_setting, set_setting
 from parser.build_db import run_import
@@ -53,6 +54,50 @@ def set_api_key():
     key = (data.get("api_key") or "").strip()
     set_setting(current_app.config["DB_PATH"], "anthropic_api_key", key)
     return jsonify({"ok": True, "configured": bool(key)})
+
+
+@bp.get("/export")
+def export_xlsx():
+    import openpyxl
+    from openpyxl.styles import Font, PatternFill, Alignment
+    conn = _db()
+    cur = conn.execute("""
+        SELECT datetime, raw_name, matched_id, matched_category,
+               quantity, unit_price, total_price, source
+        FROM purchases
+        WHERE raw_name != 'TOTAL'
+        ORDER BY datetime DESC
+    """)
+    rows = cur.fetchall()
+    conn.close()
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "purchases"
+
+    headers = ["date", "raw name", "item (canon)", "category", "qty", "unit price", "total", "source"]
+    hdr_fill = PatternFill("solid", fgColor="1E2127")
+    hdr_font = Font(name="Calibri", bold=True, color="FF9D6E")
+    for c, h in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=c, value=h)
+        cell.fill = hdr_fill
+        cell.font = hdr_font
+        cell.alignment = Alignment(horizontal="left")
+
+    for r, row in enumerate(rows, 2):
+        for c, val in enumerate(row, 1):
+            ws.cell(row=r, column=c, value=val)
+
+    col_widths = [14, 28, 22, 18, 7, 12, 12, 18]
+    for i, w in enumerate(col_widths, 1):
+        ws.column_dimensions[openpyxl.utils.get_column_letter(i)].width = w
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    return send_file(buf, download_name="res_domus_purchases.xlsx",
+                     as_attachment=True,
+                     mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
 
 @bp.post("/reimport")

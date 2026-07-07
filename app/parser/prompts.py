@@ -100,7 +100,7 @@ id INTEGER PK, month TEXT UNIQUE (YYYY-MM), manual_budget REAL, notes TEXT, upda
 
 ### v_item_stats
 Per-item aggregates: matched_id, matched_category, matched_subcategory, tags, unit, purchase_count,
-is_reliable (purchase_count >= 5), avg_unit_price, std_unit_price, min_unit_price, max_unit_price,
+is_reliable (purchase_count >= 3), avg_unit_price, std_unit_price, min_unit_price, max_unit_price,
 avg_quantity, last_quantity, total_spent, last_purchase_date, days_since_last, avg_interval_days,
 daily_consumption, est_stock_remaining, reorder_urgency (days_since / avg_interval, higher = more urgent)
 
@@ -131,29 +131,224 @@ Top 10 items by spend in last 90 days: matched_id, matched_category, matched_sub
 ### v_price_by_source
 Per item-source price stats: matched_id, unit, source, purchase_count, avg_unit_price, min_unit_price, max_unit_price
 
+## ITEM NAMES
+Canonical item names (matched_id) are stored in Spanish — this is a Lima, Peru household.
+When the user asks in English, translate food/household terms before querying matched_id.
+Common translations: milk→leche, chicken→pollo, rice→arroz, tomato→tomate, potato→papa,
+onion→cebolla, garlic→ajo, egg→huevo, oil→aceite, butter→mantequilla, flour→harina,
+sugar→azúcar, beef→carne/res, pork→cerdo, fish→pescado, detergent→detergente,
+soap→jabón, bread→pan, yogurt→yogur, cheese→queso, tuna→atún, orange→naranja,
+apple→manzana, banana→plátano, lettuce→lechuga, cucumber→pepino.
+Always use LIKE '%term%' (case-insensitive) rather than exact match, e.g.:
+  WHERE LOWER(matched_id) LIKE '%leche%'
+
+## COMMON QUERY PATTERNS
+
+### Shopping list / what to buy next
+-- days_overdue: how many days past the expected restock date (positive = overdue)
+-- Exclude delivery/service categories — they are not physical items to buy
+SELECT matched_id,
+       ROUND(days_since_last - avg_interval_days, 0) AS days_overdue,
+       ROUND(avg_interval_days, 1) AS typical_interval_days
+FROM v_item_stats
+WHERE is_reliable = 1
+  AND reorder_urgency IS NOT NULL
+  AND LOWER(COALESCE(matched_category,'')) NOT IN ('delivery','courier','servicio')
+ORDER BY reorder_urgency DESC LIMIT 10;
+
+### Stock / days until an item runs out
+SELECT matched_id, days_of_stock_left, ROUND(daily_consumption,4) AS daily_consumption
+FROM v_stock_estimates
+WHERE LOWER(matched_id) LIKE '%item%'
+  AND LOWER(COALESCE(matched_category,'')) NOT IN ('delivery','courier','servicio')
+ORDER BY days_of_stock_left;
+
+### Items likely already depleted (negative stock estimate)
+-- days_depleted: how many days ago the stock ran out (always positive here)
+SELECT matched_id,
+       ROUND(-est_stock_remaining / NULLIF(daily_consumption, 0), 0) AS days_depleted,
+       days_since_last,
+       ROUND(avg_interval_days, 1) AS avg_interval
+FROM v_item_stats
+WHERE is_reliable = 1
+  AND est_stock_remaining < 0
+  AND LOWER(COALESCE(matched_category,'')) NOT IN ('delivery','courier','servicio')
+ORDER BY est_stock_remaining ASC;
+
+### Budget projection — will I finish within budget this month?
+SELECT current_month, spent_this_month, effective_budget,
+  ROUND(
+    spent_this_month / NULLIF(CAST(strftime('%d','now') AS REAL), 0)
+    * CAST(strftime('%d', date(strftime('%Y-%m','now') || '-01', '+1 month', '-1 day')) AS REAL)
+  , 2) AS projected_monthly_spend,
+  ROUND(effective_budget - spent_this_month, 2) AS remaining
+FROM v_budget;
+
+### Daily spend allowance remaining
+SELECT ROUND(effective_budget - spent_this_month, 2) AS budget_left,
+  ROUND(
+    (effective_budget - spent_this_month) /
+    NULLIF(
+      CAST(strftime('%d', date(strftime('%Y-%m','now') || '-01', '+1 month', '-1 day')) AS REAL)
+      - CAST(strftime('%d','now') AS REAL)
+    , 0)
+  , 2) AS daily_allowance
+FROM v_budget;
+
+### Price fairness — is a quoted price good for item X?
+SELECT matched_id, ROUND(avg_unit_price,2) AS avg, ROUND(min_unit_price,2) AS min_seen,
+       ROUND(max_unit_price,2) AS max_seen, purchase_count
+FROM v_item_stats
+WHERE LOWER(matched_id) LIKE '%item%';
+
+### Cheapest store for an item
+SELECT source, ROUND(avg_unit_price,2) AS avg_price,
+       ROUND(min_unit_price,2) AS best_price, purchase_count
+FROM v_price_by_source
+WHERE LOWER(matched_id) LIKE '%item%'
+ORDER BY avg_unit_price;
+
+### Store comparison — where do I spend most / shop most?
+SELECT source, ROUND(SUM(total_price),2) AS total_spent, COUNT(DISTINCT datetime) AS orders
+FROM purchases
+WHERE raw_name != 'TOTAL' AND matched_category NOT IN ('Delivery','Courier','Servicio')
+GROUP BY source ORDER BY total_spent DESC LIMIT 8;
+
+### Savings — how much cheaper is cheapest source vs most expensive?
+-- max/min ratio < 5x guard removes unit-scale recording inconsistencies
+SELECT matched_id,
+  ROUND(MIN(avg_unit_price), 2) AS best_price,
+  ROUND(MAX(avg_unit_price), 2) AS worst_price,
+  ROUND(MAX(avg_unit_price) - MIN(avg_unit_price), 2) AS savings_per_unit
+FROM v_price_by_source
+WHERE LOWER(matched_id) LIKE '%item%'
+GROUP BY matched_id
+HAVING COUNT(DISTINCT source) > 1
+   AND MAX(avg_unit_price) / NULLIF(MIN(avg_unit_price), 0) < 5;
+
+### Items bought most frequently (subscription / automation candidates)
+SELECT matched_id, ROUND(avg_interval_days,0) AS avg_days_between,
+       purchase_count, ROUND(avg_unit_price,2) AS avg_price
+FROM v_item_stats
+WHERE avg_interval_days IS NOT NULL AND purchase_count >= 3
+  AND LOWER(COALESCE(matched_category,'')) NOT IN ('delivery','courier','servicio')
+ORDER BY avg_interval_days ASC LIMIT 10;
+
+### Category health / spend breakdown
+SELECT matched_category,
+  ROUND(SUM(total_spent),2) AS total,
+  ROUND(SUM(total_spent) * 100.0 / SUM(SUM(total_spent)) OVER (), 1) AS pct
+FROM v_monthly_spend
+WHERE month >= strftime('%Y-%m', date('now','-3 months'))
+GROUP BY matched_category ORDER BY total DESC;
+
+### Subcategory drill-down
+SELECT matched_subcategory, ROUND(SUM(total_spent),2) AS total
+FROM v_monthly_spend
+WHERE matched_category = 'CategoryName'
+  AND month >= strftime('%Y-%m', date('now','-3 months'))
+GROUP BY matched_subcategory ORDER BY total DESC;
+
+### Spending trend — is my spend going up or down?
+SELECT month, ROUND(SUM(total_spent),2) AS total
+FROM v_monthly_spend
+WHERE matched_category NOT IN ('Delivery','Courier','Servicio')
+GROUP BY month ORDER BY month DESC LIMIT 6;
+
+### Price trend for an item — has it gotten more expensive?
+SELECT datetime, ROUND(unit_price,2) AS price, source
+FROM v_price_history
+WHERE LOWER(matched_id) LIKE '%item%'
+ORDER BY datetime;
+
+### Items bought exactly once (occasional / one-off)
+SELECT matched_id, last_purchase_date, ROUND(avg_unit_price,2)
+FROM v_item_stats WHERE purchase_count = 1 ORDER BY last_purchase_date DESC;
+
+### Which items have gotten more expensive (inflation check)
+-- Only include items with consistent unit pricing (max/min ratio < 5x) to avoid
+-- false positives caused by different pack sizes recorded with different unit scales.
+SELECT matched_id,
+       ROUND(min_unit_price, 2) AS earliest_price,
+       ROUND(max_unit_price, 2) AS recent_price,
+       ROUND((max_unit_price - min_unit_price) / NULLIF(min_unit_price, 0) * 100, 1) AS pct_increase,
+       purchase_count
+FROM v_item_stats
+WHERE purchase_count >= 3
+  AND min_unit_price > 0
+  AND max_unit_price / NULLIF(min_unit_price, 0) < 5
+ORDER BY pct_increase DESC LIMIT 8;
+
 ## RULES
 - Return a single SELECT query only — no INSERT, UPDATE, DELETE, DROP, or DDL of any kind.
 - Always add WHERE raw_name != 'TOTAL' when querying the purchases table directly.
 - Use ROUND(..., 2) for prices. Prefer views over raw table when they cover the question.
 - For questions about spending trends, categories, or item history, prefer the views.
+- For ANY shopping list, running-low, or stock depletion query (including v_needed_soon and v_stock_estimates), always exclude delivery/service items: AND LOWER(COALESCE(matched_category,'')) NOT IN ('delivery','courier','servicio')
+- Always use LIKE for source name filters (e.g. WHERE LOWER(source) LIKE '%pedidosya%'), never exact match — source names have many variants in the data.
+- Prior assistant turns may end with '-- query: <SQL>'. Use that SQL as context when the current question is a follow-up (e.g. "how does that compare", "which of those", "what about last month") — adapt the prior query rather than starting from scratch.
+- For follow-ups asking for the single most/worst/urgent/expensive/cheapest item from a prior sorted list ("which of those is most urgent", "what's the worst one"), wrap the prior query as a subquery with LIMIT 1: SELECT * FROM (<prior query>) LIMIT 1;
+- For follow-ups like "break that down by subcategory" or "what are the subcategories", identify the top-ranked category from the prior answer and use it as WHERE matched_category = 'CategoryName' in the subcategory pattern.
 - CANNOT_ANSWER if the question requires data not in the schema, asks for predictions, or is not about grocery/household spending."""
 
 
-def build_sql_format_prompt(question: str, sql: str, rows: list, low_data_hint: bool = False) -> str:
+def _has_low_sample(rows: list) -> bool:
+    return any(
+        isinstance(r.get("purchase_count"), (int, float)) and 0 < r["purchase_count"] < 5
+        for r in rows
+    )
+
+
+def _has_price_ratio_anomaly(rows: list) -> bool:
+    for r in rows:
+        for mk, nk in [("max_unit_price", "min_unit_price"), ("worst_price", "best_price")]:
+            mx, mn = r.get(mk), r.get(nk)
+            if mx and mn and mn > 0 and mx / mn > 5:
+                return True
+    # Also catch per-source comparisons where avg_unit_price spread is suspicious
+    prices = [r["avg_unit_price"] for r in rows
+              if isinstance(r.get("avg_unit_price"), (int, float)) and r["avg_unit_price"] > 0]
+    if len(prices) >= 2 and max(prices) / min(prices) > 5:
+        return True
+    return False
+
+
+def build_sql_format_prompt(question: str, sql: str, rows: list, low_data_hint: bool = False, lang: str = "en") -> str:
     rows_preview = rows[:20]
+    lang_instruction = "Respond in English." if lang == "en" else "Responde en español."
     empty_instruction = (
         "If results are empty, explain specifically that there isn't enough purchase "
-        "history yet for this insight — items need at least 5 recorded purchases before "
+        "history yet for this insight — items need at least 3 recorded purchases before "
         "reorder/stock predictions are reliable — rather than a generic \"no data found\"."
         if low_data_hint else
         "If results are empty, say no data was found."
     )
+    if _has_low_sample(rows_preview):
+        low_sample_note = (
+            "Si alguna fila tiene purchase_count < 5, añade '(N compras)' tras las cifras — p.ej. 'Leche — S/.3.98 (3 compras)'."
+            if lang == "es" else
+            "If any row has purchase_count < 5, append '(N purchases)' after that item's figures — e.g. 'Leche — S/.3.98 (3 purchases)'."
+        )
+    else:
+        low_sample_note = ""
+    if _has_price_ratio_anomaly(rows_preview):
+        price_ratio_note = (
+            "Una o más comparaciones muestran una diferencia de precios > 5×. Añade al final: 'Nota: la diferencia puede reflejar inconsistencia en las unidades de medida.'"
+            if lang == "es" else
+            "One or more price comparisons show a ratio > 5× — add a single line at the end: 'Note: large price gap may reflect unit-scale inconsistency.'"
+        )
+    else:
+        price_ratio_note = ""
+    extras = "\n".join(x for x in [low_sample_note, price_ratio_note] if x)
     return f"""The user asked: "{question}"
 
-You ran this SQL query:
-{sql}
-
-Results ({len(rows)} row(s)):
+SQL results ({len(rows)} row(s)):
 {json.dumps(rows_preview, ensure_ascii=False, default=str)}
 
-Write a concise 1–2 sentence answer in the same language as the question. Use specific numbers from the results. Do not explain the SQL. {empty_instruction}"""
+{lang_instruction} Be terse.
+- Scalar result: one number or short phrase
+- List: max 6 plain lines, format "Item — detail". No header, no preamble
+- Trend or comparison: max 2 sentences
+Exact numbers. Currency S/.XX.XX (2 decimal places). Plain text, no markdown, no asterisks, no bold, no emojis. No SQL explanation.
+Never output raw est_stock_remaining unit quantities or reorder_urgency decimal values — if a result has negative stock or urgency numbers, express depletion as "X days overdue" using days_since_last and avg_interval_days instead.
+{empty_instruction}{chr(10) + extras if extras else ""}"""

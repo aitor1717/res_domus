@@ -234,33 +234,47 @@ def chart():
 @bp.get("/needed-soon")
 def needed_soon():
     conn = _db()
+    # Return up to 9 reliable items regardless of urgency threshold, so the
+    # dashboard always shows 6 circles (first 6 visible, up to 3 in see-more).
+    # Low-urgency items render green — they're still useful as stock awareness.
     cur = conn.execute("""
         SELECT matched_id, matched_category, last_purchase_date,
-               days_since_last, avg_interval_days, reorder_urgency
-        FROM v_needed_soon LIMIT 15
+               days_since_last, avg_interval_days, reorder_urgency,
+               est_stock_remaining, daily_consumption
+        FROM v_item_stats
+        WHERE is_reliable = 1 AND reorder_urgency IS NOT NULL
+          AND matched_category NOT IN ('Delivery','Courier','Servicio')
+        ORDER BY reorder_urgency DESC
+        LIMIT 9
     """)
     rows = _rows_as_dicts(cur)
-    # Distinguish "all good, nothing urgent" from "not enough purchase
-    # history yet to compute reliable insights" — both render an empty list
-    # above but mean very different things to the user.
     reliable_count = conn.execute(
         "SELECT COUNT(*) FROM v_item_stats WHERE is_reliable = 1"
     ).fetchone()[0]
     conn.close()
 
     for row in rows:
-        row["urgency_pct"] = min(100, round(row["reorder_urgency"] * 100))
+        urgency = row.get("reorder_urgency") or 0
+        row["urgency_pct"] = min(100, round(urgency * 100))
         row["urgency_color"] = _urgency_color(row["urgency_pct"])
+        # Days-left estimate: prefer stock-based if consumption is known,
+        # fall back to cycle-based (avg_interval - days_since_last).
+        est   = row.get("est_stock_remaining")
+        daily = row.get("daily_consumption") or 0
+        if daily > 0 and est is not None:
+            row["days_left"] = round(est / daily)
+        else:
+            avg_int    = row.get("avg_interval_days") or 0
+            days_since = row.get("days_since_last") or 0
+            row["days_left"] = round(avg_int - days_since) if avg_int > 0 else None
     return jsonify({"items": rows, "reliable_count": reliable_count})
 
 
 def _urgency_color(pct: int) -> str:
-    if pct >= 85: return "#FF6F91"
-    if pct >= 70: return "#FF9D6E"
-    if pct >= 55: return "#FFE0A3"
-    if pct >= 45: return "rgba(255,157,110,.45)"
-    if pct >= 30: return "rgba(255,157,110,.3)"
-    return "rgba(255,157,110,.18)"
+    if pct >= 80: return "#FF6F91"              # critical
+    if pct >= 60: return "#FF9D6E"              # getting low
+    if pct >= 40: return "#FFE0A3"              # watch it
+    return "rgba(100,200,140,.8)"               # good stock — greenish
 
 
 @bp.get("/top-items")
