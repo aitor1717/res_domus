@@ -2,6 +2,7 @@
 
 let currentPeriod = '30d';
 let lang = localStorage.getItem('lang') || 'en';
+/* curr() is shared — see static/js/utils.js */
 let chart = null;
 let chartData = {};
 const chatHistory = [];  // [{role:'user'|'assistant', content:'...'}]
@@ -37,14 +38,14 @@ chart = new Chart(ctx, {
         pointRadius: [], pointBorderColor: [], pointBackgroundColor: [], pointBorderWidth: [],
       },
       {
-        label: 'abarrotes', data: [], borderColor: '#FFC2D6',
-        backgroundColor: mkGrad(255, 194, 214, 0.14), borderWidth: 1.5,
-        borderDash: [5, 4], fill: true, tension: 0.42, pointRadius: 2.5, order: 2,
+        label: 'groceries', data: [], borderColor: '#FFC2D6',
+        backgroundColor: mkGrad(255, 194, 214, 0.18), borderWidth: 2,
+        borderDash: [6, 3], fill: true, tension: 0.42, pointRadius: 3, order: 2,
       },
       {
-        label: 'carnes', data: [], borderColor: '#FF6F91',
-        backgroundColor: mkGrad(255, 111, 145, 0.11), borderWidth: 1.5,
-        borderDash: [5, 4], fill: true, tension: 0.42, pointRadius: 2.5, order: 1,
+        label: 'meat', data: [], borderColor: '#FF6F91',
+        backgroundColor: mkGrad(255, 111, 145, 0.16), borderWidth: 2,
+        borderDash: [6, 3], fill: true, tension: 0.42, pointRadius: 3, order: 1,
       },
       {
         label: 'delivery + servicio', data: [], borderColor: '#FFE0A3',
@@ -71,9 +72,9 @@ chart = new Chart(ctx, {
             if (c.datasetIndex === 3) {
               const actual = (chartData[currentPeriod] || {}).delivery;
               const v = actual ? actual[c.dataIndex] : c.parsed.y;
-              return ` delivery + servicio  S/.${(v || 0).toFixed(0)}`;
+              return ` delivery + servicio  ${curr()}${(v || 0).toFixed(0)}`;
             }
-            return ` ${c.dataset.label}  S/.${c.parsed.y.toFixed(0)}`;
+            return ` ${c.dataset.label}  ${curr()}${c.parsed.y.toFixed(0)}`;
           },
         },
       },
@@ -86,7 +87,7 @@ chart = new Chart(ctx, {
       },
       y: {
         grid: { color: 'rgba(255,157,110,.12)', drawBorder: false },
-        ticks: { color: 'rgba(255,157,110,.52)', font: { family: 'IBM Plex Mono', size: 9 }, callback: v => 'S/.' + v },
+        ticks: { color: 'rgba(255,157,110,.52)', font: { family: 'IBM Plex Mono', size: 9 }, callback: v => curr() + v },
         border: { display: false },
       },
     },
@@ -141,7 +142,7 @@ async function loadBudget() {
   const spentEl = document.getElementById('ringmeta-spent');
   const daysEl  = document.getElementById('ringmeta-days');
   if (spentEl) spentEl.innerHTML =
-    `${T[lang].spentLbl} <b><span class="curr-ring">S/.</span>${(d.spent_this_month || 0).toFixed(2)}</b>`;
+    `${T[lang].spentLbl} <b><span class="curr-ring">${curr()}</span>${(d.spent_this_month || 0).toFixed(2)}</b>`;
   if (daysEl) daysEl.innerHTML =
     `<b>${d.days_remaining ?? '—'}</b> ${T[lang].daysLbl}`;
 
@@ -155,10 +156,14 @@ async function loadBudget() {
 async function loadKPIs(period = currentPeriod) {
   const d = await fetch(`/api/kpis?period=${period}`).then(r => r.json());
   if (period !== currentPeriod) return;
-  const fmt = v => v == null ? '—' : (v >= 0 ? `↑ ${v}%` : `↓ ${Math.abs(v)}%`);
+
+  const kpiLbl = document.getElementById('kpi-total-lbl');
+  if (kpiLbl) {
+    kpiLbl.textContent = T[lang].kpiPeriodLabels[period] || T[lang].kpiPeriodLabels['30d'];
+  }
 
   const tot = d.month_total || 0;
-  document.getElementById('kpi-total').innerHTML = `<span class="curr-kpi">S/.</span>${tot.toFixed(2)}`;
+  document.getElementById('kpi-total').innerHTML = `<span class="curr-kpi">${curr()}</span>${tot.toFixed(2)}`;
   const td = d.month_total_delta;
   document.getElementById('kpi-total-delta').className = 'kpi-delta ' + (td > 0 ? 'up' : td < 0 ? 'down' : 'flat');
   document.getElementById('kpi-total-delta').textContent = td != null ? `${td > 0 ? '↑' : '↓'} ${Math.abs(td)}%` : '—';
@@ -169,14 +174,14 @@ async function loadKPIs(period = currentPeriod) {
   document.getElementById('kpi-orders-delta').textContent = od !== 0 ? `${od > 0 ? '+' : ''}${od}` : '—';
 
   const avg = d.avg_order || 0;
-  document.getElementById('kpi-avg').innerHTML = `<span class="curr-kpi">S/.</span>${avg.toFixed(2)}`;
+  document.getElementById('kpi-avg').innerHTML = `<span class="curr-kpi">${curr()}</span>${avg.toFixed(2)}`;
   const ad = d.avg_order_delta;
   document.getElementById('kpi-avg-delta').className = 'kpi-delta ' + (ad > 2 ? 'up' : ad < -2 ? 'down' : 'flat');
   document.getElementById('kpi-avg-delta').textContent = ad != null ? `${ad > 0 ? '↑' : '↓'} ${Math.abs(ad)}%` : '—';
 
   document.getElementById('kpi-tracked').textContent = d.tracked_items || 0;
-  document.getElementById('kpi-tracked-delta').className = 'kpi-delta ' + (d.new_this_month ? 'up' : 'flat');
-  document.getElementById('kpi-tracked-delta').textContent = d.new_this_month ? `+${d.new_this_month}` : '—';
+  document.getElementById('kpi-tracked-delta').className = 'kpi-delta flat';
+  document.getElementById('kpi-tracked-delta').textContent = d.category_count ? `${d.category_count} cat.` : '—';
 }
 
 async function loadChart(period) {
@@ -188,8 +193,8 @@ async function loadChart(period) {
   const ps = ptStyle(d.total || [], anomIdx);
   chart.data.labels = d.labels || [];
   Object.assign(chart.data.datasets[0], { data: d.total || [], ...ps });
-  chart.data.datasets[1].data = d.abarrotes || [];
-  chart.data.datasets[2].data = d.carnes || [];
+  chart.data.datasets[1].data = d.groceries || d.abarrotes || [];
+  chart.data.datasets[2].data = d.meat || d.carnes || [];
   chart.data.datasets[3].data = d.deliveryAbove || [];
   chart.update('active');
 
@@ -200,36 +205,20 @@ async function loadChart(period) {
 async function loadNeeded() {
   const data = await fetch('/api/needed-soon').then(r => r.json());
   const items = data.items || [];
-  const grid      = document.getElementById('neededGrid');
-  const extraGrid = document.getElementById('neededGridExtra');
-  const noteEl    = document.getElementById('neededNote');
-  grid.innerHTML      = '';
-  extraGrid.innerHTML = '';
+  const grid   = document.getElementById('neededGrid');
+  const noteEl = document.getElementById('neededNote');
+  grid.innerHTML = '';
   if (noteEl) noteEl.innerHTML = '';
 
-  // Always show 6 circles — pad with placeholders if fewer real items
-  const visible = items.slice(0, 6);
-  const extra   = items.slice(6);
-  const padded  = [...visible];
-  while (padded.length < 6) padded.push(null);
+  // Show all items (up to 12), pad to 6 minimum so grid always has one full row
+  const display = items.slice(0, 12);
+  while (display.length < 6) display.push(null);
+  display.forEach((item, i) => grid.appendChild(makeCircle(item, i)));
 
-  padded.forEach((item, i) => grid.appendChild(makeCircle(item, i)));
-  extra.forEach((item, i)   => extraGrid.appendChild(makeCircle(item, i)));
-
-  // Status tag below circles (not replacing them)
   if (!items.length && noteEl) {
     const cls = data.reliable_count > 0 ? 'needed-tag needed-ok' : 'needed-tag needed-nodata';
     const msg = data.reliable_count > 0 ? T[lang].neededAllGood : T[lang].neededNoData;
     noteEl.innerHTML = `<div class="${cls}">${msg}</div>`;
-  }
-
-  const btn = document.getElementById('needExpBtn');
-  if (extra.length) {
-    btn.classList.add('visible');
-    document.getElementById('needExpLabel').textContent =
-      lang === 'es' ? `ver más (${extra.length})` : `see more (${extra.length})`;
-  } else {
-    btn.classList.remove('visible');
   }
 
   setTimeout(() => animateArcs([...grid.querySelectorAll('.ni-arc')]), 50);
@@ -254,18 +243,11 @@ function makeCircle(item, i) {
   const pct   = item.urgency_pct || 0;
   const color = item.urgency_color || 'rgba(255,157,110,.18)';
 
-  // Days left label — compact enough to fit in 56px circle
-  let daysStr = '';
-  if (item.days_left != null) {
-    const d = item.days_left;
-    daysStr = d < 0 ? `−${Math.abs(d)}d` : `${d}d`;
-  }
-
   const div = document.createElement('div');
   div.className = 'ni';
   div.style.cssText = `--nd:${0.35 + i * 0.07}s`;
   div.innerHTML = `
-    <div class="ni-circ">
+    <div class="ni-circ" style="box-shadow:0 0 14px ${color}4d">
       <svg viewBox="0 0 36 36">
         <circle cx="18" cy="18" r="15.915" fill="none" stroke="rgba(58,77,97,.9)" stroke-width="2.5"/>
         <circle cx="18" cy="18" r="15.915" fill="none" stroke="${color}" stroke-width="2.5"
@@ -274,10 +256,9 @@ function makeCircle(item, i) {
       </svg>
       <div class="ni-val">
         <span class="ni-val-pct" style="color:${color}">${pct}%</span>
-        ${daysStr ? `<span class="ni-val-days">${daysStr}</span>` : ''}
       </div>
     </div>
-    <div class="ni-name">${item.matched_id || '—'}</div>`;
+    <div class="ni-name">${esc(item.matched_id || '—')}</div>`;
   return div;
 }
 
@@ -295,7 +276,7 @@ async function loadTopItems(period = currentPeriod) {
     row.className = 'ti-row';
     // Use actual pct for bar width so bars reflect real share, not just relative rank
     row.innerHTML = `
-      <div class="ti-name">${item.matched_id}</div>
+      <div class="ti-name">${esc(item.matched_id)}</div>
       <div class="ti-bar"><div class="ti-fill" style="width:${item.pct}%"></div></div>
       <div class="ti-pct">${item.pct}%</div>`;
     list.appendChild(row);
@@ -326,9 +307,9 @@ async function loadOrders(period = currentPeriod) {
     const badge = BADGE[type];
     const label = ENTRY_LABEL[type][lang] || ENTRY_LABEL[type].en;
     tr.innerHTML = `
-      <td>${o.date_label}</td>
-      <td><span class="td-store">${o.source}</span></td>
-      <td class="td-price">S/.${(o.order_total || 0).toFixed(2)}</td>
+      <td>${esc(o.date_label)}</td>
+      <td><span class="td-store">${esc(o.source)}</span></td>
+      <td class="td-price">${curr()}${(o.order_total || 0).toFixed(2)}</td>
       <td><span class="badge i18n" data-en="${ENTRY_LABEL[type].en}" data-es="${ENTRY_LABEL[type].es}" style="${badge}">${label}</span></td>`;
     tbody.appendChild(tr);
   });
@@ -410,6 +391,7 @@ const T = {
     needed: 'por agotar',
     bycat: 'mayor gasto',
     periodLabels: { '30d': 'este mes', '90d': 'últ. 90d', 'all': 'todo' },
+    kpiPeriodLabels: { '30d': 'este mes', '90d': 'últ. 90d', 'all': 'este año' },
     recent: 'recientes', chat: 'gestor',
     placeholder: 'consulta sobre precios, listas, urgencias, tendencias…',
     noAnswer: 'Sin respuesta.', chatError: 'error al consultar',
@@ -426,6 +408,7 @@ const T = {
     needed: 'running low',
     bycat: 'top spend',
     periodLabels: { '30d': 'this month', '90d': 'last 90d', 'all': 'all time' },
+    kpiPeriodLabels: { '30d': 'this month', '90d': 'last 90d', 'all': 'this year' },
     recent: 'recent', chat: 'warehouse manager',
     placeholder: 'query prices, lists, urgency, trends…',
     noAnswer: 'No answer.', chatError: 'query error',
@@ -551,10 +534,10 @@ function renderDraftPurchase(box, items) {
   card.className = 'msg msg-b draft-card';
   const rowsHtml = items.map((it, i) => `
     <tr>
-      <td><input value="${escAttr(it.raw_name || '')}" onchange="updateDraftItem(${i},'raw_name',this.value)"></td>
-      <td><input value="${escAttr(it.quantity ?? '')}" style="width:48px" onchange="updateDraftItem(${i},'quantity',this.value)"></td>
-      <td><input value="${escAttr(it.total_price ?? '')}" style="width:60px" onchange="updateDraftItem(${i},'total_price',this.value)"></td>
-      <td><input type="date" value="${escAttr(it.datetime || '')}" onchange="updateDraftItem(${i},'datetime',this.value)"></td>
+      <td><input value="${esc(it.raw_name || '')}" onchange="updateDraftItem(${i},'raw_name',this.value)"></td>
+      <td><input value="${esc(it.quantity ?? '')}" style="width:48px" onchange="updateDraftItem(${i},'quantity',this.value)"></td>
+      <td><input value="${esc(it.total_price ?? '')}" style="width:60px" onchange="updateDraftItem(${i},'total_price',this.value)"></td>
+      <td><input type="date" value="${esc(it.datetime || '')}" onchange="updateDraftItem(${i},'datetime',this.value)"></td>
     </tr>`).join('');
   card.innerHTML = `
     <div class="draft-title">${T[lang].draftTitle}</div>
@@ -600,9 +583,7 @@ async function confirmDraftPurchase(btn) {
   box.scrollTop = box.scrollHeight;
 }
 
-function escAttr(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
-}
+/* esc() is shared — see static/js/utils.js */
 
 async function loadChatNotice() {
   try {

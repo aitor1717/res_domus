@@ -41,7 +41,8 @@ NO_KEY_MSG = (
     "No hay una clave API de Anthropic configurada — agrega una en Configuración para habilitar el análisis de recibos."
 )
 
-# Per-session state: sid → {sse_queue, date_queue, items, images, group_name, order_date}
+# Per-session state: sid → {sse_queue, date_queue, date_confirmed, retry_queue,
+#                            images, group_name, items, order_date}
 _sessions: dict[str, dict] = {}
 _sessions_lock = threading.Lock()
 
@@ -53,6 +54,46 @@ def _session(sid: str) -> dict | None:
 
 def _emit(q: queue.Queue, event: str, data: dict) -> None:
     q.put(f"event: {event}\ndata: {json.dumps(data)}\n\n")
+
+
+def _sse_response(q: queue.Queue) -> Response:
+    """Stream a session's queue as Server-Sent Events until its None sentinel."""
+    @stream_with_context
+    def generate():
+        while True:
+            try:
+                msg = q.get(timeout=25)
+            except queue.Empty:
+                yield ": keepalive\n\n"
+                continue
+            if msg is None:
+                break
+            yield msg
+
+    return Response(generate(), mimetype="text/event-stream",
+                     headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
+def _run_parse(sess: dict, order_date_str: str, out_queue: queue.Queue, note: str = "", progress_msg: str = "Parsing receipt…") -> list[dict]:
+    """Shared parse pipeline used by both the initial parse and retry-parse threads."""
+    aux_csv = Path(current_app.config["AUX_CSV"])
+    db_path = Path(current_app.config["DB_PATH"])
+    canonical_items = load_canonical_items(aux_csv)
+    price_stats = load_price_stats(db_path)
+
+    system_prompt = build_parser_system(canonical_items)
+    user_text = build_parser_user(order_date_str, note)
+    _emit(out_queue, "progress", {"message": progress_msg})
+
+    api_key = get_anthropic_key(current_app.config["DB_PATH"], current_app.config["ANTHROPIC_API_KEY"])
+    client = anthropic.Anthropic(api_key=api_key)
+    items = parse_group(client, sess["images"], system_prompt, user_text, model=current_app.config["MODEL_PARSER"])
+    items = clean_items(items, order_date_str)
+    flag_outliers(items, price_stats)
+
+    sess["items"] = items
+    _emit(out_queue, "done", {"items": items, "count": len(items)})
+    return items
 
 
 def _parse_thread(sid: str, app) -> None:
@@ -77,32 +118,29 @@ def _parse_thread(sid: str, app) -> None:
                 return
 
             sess["order_date"] = confirmed_date_str
-
-            # Load canonical items and price stats
-            aux_csv = Path(current_app.config["AUX_CSV"])
-            db_path = Path(current_app.config["DB_PATH"])
-            canonical_items = load_canonical_items(aux_csv)
-            price_stats = load_price_stats(db_path)
-
-            # Build prompt and parse
-            system_prompt = build_parser_system(canonical_items)
-            user_text = build_parser_user(confirmed_date_str)
-            _emit(sq, "progress", {"message": "Parsing receipt…"})
-
-            api_key = get_anthropic_key(current_app.config["DB_PATH"], current_app.config["ANTHROPIC_API_KEY"])
-            client = anthropic.Anthropic(api_key=api_key)
-            items = parse_group(client, sess["images"], system_prompt, user_text, model=current_app.config["MODEL_PARSER"])
-            items = clean_items(items, confirmed_date_str)
-            flag_outliers(items, price_stats)
-
-            sess["items"] = items
-            _emit(sq, "done", {"items": items, "count": len(items)})
+            _run_parse(sess, confirmed_date_str, sq)
 
         except Exception as e:
             current_app.logger.exception("parse thread failed")
             _emit(sq, "error", {"message": str(e)})
         finally:
             sq.put(None)  # sentinel — close stream
+
+
+def _retry_thread(sid: str, app, note: str) -> None:
+    with app.app_context():
+        sess = _session(sid)
+        if not sess:
+            return
+        rq = sess["retry_queue"]
+        try:
+            order_date = sess["order_date"]
+            _run_parse(sess, order_date, rq, note=note, progress_msg="Re-parsing receipt…")
+        except Exception as e:
+            app.logger.exception("retry thread failed")
+            _emit(rq, "error", {"message": str(e)})
+        finally:
+            rq.put(None)
 
 
 @bp.post("/files")
@@ -136,12 +174,14 @@ def upload_files():
 
     with _sessions_lock:
         _sessions[sid] = {
-            "sse_queue":  queue.Queue(),
-            "date_queue": queue.Queue(maxsize=1),
-            "images":     saved,
-            "group_name": group_name,
-            "items":      None,
-            "order_date": None,
+            "sse_queue":      queue.Queue(),
+            "date_queue":     queue.Queue(maxsize=1),
+            "date_confirmed": False,
+            "retry_queue":    queue.Queue(),
+            "images":         saved,
+            "group_name":     group_name,
+            "items":          None,
+            "order_date":     None,
         }
 
     app = current_app._get_current_object()
@@ -156,22 +196,7 @@ def parse_status(sid: str):
     sess = _session(sid)
     if not sess:
         return jsonify({"error": "session not found"}), 404
-
-    @stream_with_context
-    def generate():
-        sq = sess["sse_queue"]
-        while True:
-            try:
-                msg = sq.get(timeout=25)
-            except queue.Empty:
-                yield ": keepalive\n\n"
-                continue
-            if msg is None:
-                break
-            yield msg
-
-    return Response(generate(), mimetype="text/event-stream",
-                    headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+    return _sse_response(sess["sse_queue"])
 
 
 @bp.post("/confirm-date")
@@ -179,13 +204,14 @@ def confirm_date():
     data = request.get_json(force=True)
     sid = data.get("session_id")
     date_str = data.get("date")
-    sess = _session(sid)
-    if not sess:
-        return jsonify({"error": "session not found"}), 404
-    try:
-        sess["date_queue"].put_nowait(date_str)
-    except queue.Full:
-        return jsonify({"error": "date already confirmed"}), 409
+    with _sessions_lock:
+        sess = _sessions.get(sid)
+        if not sess:
+            return jsonify({"error": "session not found"}), 404
+        if sess["date_confirmed"]:
+            return jsonify({"error": "date already confirmed"}), 409
+        sess["date_confirmed"] = True
+    sess["date_queue"].put_nowait(date_str)
     return jsonify({"ok": True})
 
 
@@ -235,30 +261,21 @@ def retry_parse():
     sess = _session(sid)
     if not sess:
         return jsonify({"error": "session not found"}), 404
-
-    order_date = sess.get("order_date")
-    if not order_date:
+    if not sess.get("order_date"):
         return jsonify({"error": "no confirmed date"}), 400
-
-    aux_csv = Path(current_app.config["AUX_CSV"])
-    db_path = Path(current_app.config["DB_PATH"])
-    canonical_items = load_canonical_items(aux_csv)
-    price_stats = load_price_stats(db_path)
-
-    system_prompt = build_parser_system(canonical_items)
-    user_text = build_parser_user(order_date, note)
-
-    api_key = get_anthropic_key(current_app.config["DB_PATH"], current_app.config["ANTHROPIC_API_KEY"])
-    if not api_key:
+    if not get_anthropic_key(current_app.config["DB_PATH"], current_app.config["ANTHROPIC_API_KEY"]):
         return jsonify({"error": NO_KEY_MSG}), 400
 
-    client = anthropic.Anthropic(api_key=api_key)
-    try:
-        items = parse_group(client, sess["images"], system_prompt, user_text, model=current_app.config["MODEL_PARSER"])
-        items = clean_items(items, order_date)
-        flag_outliers(items, price_stats)
-        sess["items"] = items
-        return jsonify({"items": items, "count": len(items)})
-    except Exception as e:
-        current_app.logger.exception("retry-parse failed")
-        return jsonify({"error": str(e)}), 500
+    # Reset retry queue so each retry gets a fresh stream
+    sess["retry_queue"] = queue.Queue()
+    app = current_app._get_current_object()
+    threading.Thread(target=_retry_thread, args=(sid, app, note), daemon=True).start()
+    return jsonify({"ok": True})
+
+
+@bp.get("/retry-status/<sid>")
+def retry_status(sid: str):
+    sess = _session(sid)
+    if not sess:
+        return jsonify({"error": "session not found"}), 404
+    return _sse_response(sess["retry_queue"])

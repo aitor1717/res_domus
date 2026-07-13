@@ -1,6 +1,9 @@
 services:
   app:
-    build: ./app
+    build:
+      context: ./app
+      args:
+        APP_UID: ${APP_UID:-1000}
     expose:
       - "5000"
     ports:
@@ -8,9 +11,12 @@ services:
     volumes:
       - ./data:/data
       - ./app/aux_items.csv:/app/aux_items.csv
+      - ./app/aux_items_en.csv:/app/aux_items_en.csv
     environment:
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - SECRET_KEY=${SECRET_KEY:-change-me}
+      - TEST_RUN=${TEST_RUN:-}
+      - INSTANCE_LABEL=${INSTANCE_LABEL:-res domus}
       - BASIC_AUTH_USER=${BASIC_AUTH_USER:-}
       - BASIC_AUTH_PASS=${BASIC_AUTH_PASS:-}
     restart: unless-stopped

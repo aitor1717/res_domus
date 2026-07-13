@@ -157,7 +157,7 @@
       </div>
     </div>
     <div class="tb-line2">
-      <a class="wordmark" href="/" style="text-decoration:none"><span class="top-tag">domus_01 @ lima_pe</span></a>
+      <a class="wordmark" href="/" style="text-decoration:none"><span class="top-tag">{{ instance_label }}</span></a>
     </div>
     {% block topbar_extra %}{% endblock %}
   </header>
@@ -206,6 +206,7 @@ if ('serviceWorker' in navigator) {
   });
 }
 </script>
+<script src="/static/js/utils.js"></script>
 {% block scripts %}{% endblock %}
 </body>
 </html>

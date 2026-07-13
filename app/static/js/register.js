@@ -78,15 +78,15 @@ function renderEntries(rows) {
     return;
   }
   const sum = rows.reduce((s, r) => s + (r.total_price || 0), 0);
-  summary.innerHTML = `${rows.length} ${t('entries')} · ${t('total')} <span class="hi">S/.${sum.toFixed(2)}</span>`;
+  summary.innerHTML = `${rows.length} ${t('entries')} · ${t('total')} <span class="hi">${curr()}${sum.toFixed(2)}</span>`;
   tbody.innerHTML = rows.map(r => `
     <tr>
       <td>${esc(r.datetime || '')}</td>
       <td><span class="item-name">${esc(r.matched_id || r.raw_name || '')}</span></td>
       <td>${r.matched_category ? `<span class="cat-badge">${esc(r.matched_category)}</span>` : '—'}</td>
       <td>${r.quantity ?? '—'}</td>
-      <td>${r.unit_price != null ? 'S/.' + Number(r.unit_price).toFixed(2) : '—'}</td>
-      <td class="reg-total">S/.${Number(r.total_price || 0).toFixed(2)}</td>
+      <td>${r.unit_price != null ? curr() + Number(r.unit_price).toFixed(2) : '—'}</td>
+      <td class="reg-total">${curr()}${Number(r.total_price || 0).toFixed(2)}</td>
       <td>${esc(r.source || '—')}</td>
       <td>
         <button class="act-btn act-edit" onclick="openModal(${r.id})">${t('edit')}</button>
@@ -157,10 +157,7 @@ function searchEntries(q) {
   searchTimer = setTimeout(() => loadEntries(q), 220);
 }
 
-/* ── UTILS ── */
-function esc(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}
+/* esc() is shared — see static/js/utils.js */
 
 /* ── INIT ── */
 document.addEventListener('DOMContentLoaded', () => {

@@ -1,0 +1,89 @@
+id,item,category,unit,purchases_per_month,qty_per_purchase,unit_price_soles,store
+1,Papa,Frutas y Verduras,kg,2,2,2,Mercado
+2,Camote,Frutas y Verduras,kg,1,1,2,Mercado
+3,Cebolla,Frutas y Verduras,kg,2,1,2,Mercado
+4,Kion,Frutas y Verduras,u,1,1,1,Mercado
+5,Tomate,Frutas y Verduras,kg,2,0.5,3,Mercado
+6,Zanahoria,Frutas y Verduras,kg,2,0.5,2,Mercado
+7,Pimiento,Frutas y Verduras,u,2,2,1.5,Mercado
+8,Ají amarillo,Frutas y Verduras,kg,2,0.2,4,Mercado
+9,Lechuga,Frutas y Verduras,u,2,1,2,Mercado
+10,Pepino,Frutas y Verduras,u,1,2,1,Mercado
+11,Ajo,Frutas y Verduras,u,2,3,1,Mercado
+12,Limón,Frutas y Verduras,kg,2,0.5,3,Mercado
+13,Zapallo,Frutas y Verduras,kg,1,0.5,3,Mercado
+14,Apio,Frutas y Verduras,u,1,1,1.5,Mercado
+15,Verduras Picadas,Frutas y Verduras,u,2,1,3,Mercado
+17,Cebolla china,Frutas y Verduras,g,2,50,0.05,Mercado
+90,Espinaca,Frutas y Verduras,kg,1,0.5,4,Mercado
+101,Palta Para Hoy 500 g,Frutas y Verduras,g,2,500,0.016,Mercado
+102,Manzana Delicia x1Kg,Frutas y Verduras,kg,2,1,5,Mercado
+103,Plátano,Frutas y Verduras,u,4,6,0.5,Mercado
+18,Pollo,Carnes,u,2,1,18,Mercado
+19,Carne Molida,Carnes,kg,2,0.5,16,Mercado
+20,Bisteck,Carnes,u,1,2,6,Mercado
+21,Chuleta,Carnes,u,1,2,5,Mercado
+22,Carne en Presas,Carnes,kg,1,0.5,15,Mercado
+23,Milanesa de Pollo,Carnes,u,2,2,5,Mercado
+24,Hamburguesa,Carnes,u,1,2,4,Mercado
+25,Filete de Pescado,Carnes,kg,2,0.5,14,Mercado
+68,Pechuga de Pollo,Carnes,kg,1,0.5,14,Mercado
+97,Nuggets de Pollo,Carnes,u,1,1,16,Wong
+26,Azúcar,Abarrotes,kg,1,1,3,Wong
+27,Arroz,Abarrotes,kg,1,5,4,Wong
+28,Leche,Abarrotes,latas,2,6,4,Wong
+29,Huevos,Abarrotes,u,2,12,0.65,Wong
+30,Sal,Abarrotes,kg,0.5,1,1,Wong
+31,Milo,Abarrotes,g,1,200,0.075,Wong
+32,Mantequilla,Abarrotes,g,1,200,0.045,Wong
+33,Queso,Abarrotes,g,2,200,0.045,Wong
+34,Jamonada,Abarrotes,g,2,200,0.025,Wong
+35,Mermelada,Abarrotes,g,1,300,0.022,Wong
+36,Aceite,Abarrotes,l,1,1,8,Wong
+37,Hotdogs,Abarrotes,u,1,6,1.5,Wong
+38,Atún,Abarrotes,latas,2,3,3,Wong
+39,Galleta de soda,Abarrotes,paquetes,2,1,4,Wong
+40,Mayonesa,Abarrotes,g,1,200,0.035,Wong
+41,Spaghetti,Abarrotes,kg,1,0.5,4,Wong
+42,Cabello de Ángel,Abarrotes,kg,1,0.5,4,Wong
+43,Avena Preparada,Abarrotes,kg,1,1,5,Wong
+44,Manzanilla,Abarrotes,u,1,1,2,Wong
+45,Té,Abarrotes,u,1,1,4,Wong
+46,Anís,Abarrotes,u,0.5,1,2,Wong
+47,Café,Abarrotes,kg,1,0.25,22,Wong
+48,Lentejas,Abarrotes,kg,1,0.5,5,Wong
+49,Garbanzo,Abarrotes,kg,0.5,0.5,6,Wong
+50,Frejoles Rojos,Abarrotes,kg,1,0.5,5,Wong
+51,Frejoles Blancos,Abarrotes,kg,0.5,0.5,5,Wong
+52,Arverjita Verde,Abarrotes,kg,1,0.5,6,Wong
+53,Harina Preparada,Abarrotes,kg,0.5,1,5,Wong
+54,Maicena,Abarrotes,g,0.5,200,0.022,Wong
+55,Canchita,Abarrotes,kg,0.5,0.5,5,Wong
+61,Aji Panca,Abarrotes,g,1,200,0.025,Wong
+62,Ajo Molido,Abarrotes,g,1,100,0.055,Wong
+63,Laurel,Abarrotes,u,0.5,1,1,Wong
+66,Comino,Abarrotes,g,0.5,50,0.06,Wong
+67,Pimienta,Abarrotes,g,0.5,50,0.06,Wong
+94,Pan,Abarrotes,u,4,10,0.3,Panadería
+95,Jugo,Abarrotes,l,2,1,8,Wong
+98,Miel,Abarrotes,g,0.5,200,0.055,Wong
+99,Sopa Inastantánea,Abarrotes,u,2,3,2,Wong
+100,Yogurt,Abarrotes,g,2,500,0.02,Wong
+69,Almendras,Papá,g,0.5,100,0.09,Wong
+70,Helado,Papá,l,1,1,13,Wong
+71,Avena,Papá,kg,1,0.5,6,Wong
+72,Gelatina,Papá,sobres,1,2,1.5,Wong
+73,Servilletas,Limpieza,u,1,1,4,Wong
+74,Papel Higiénico,Limpieza,rollos,1,6,1.5,Wong
+75,Papel Toalla,Limpieza,rollos,1,2,4,Wong
+76,Detergente,Limpieza,kg,1,1,8,Wong
+77,Lejía Blanca,Limpieza,l,1,1,3,Wong
+78,Lejía Color,Limpieza,l,0.5,1,5,Wong
+79,Lavavajilla,Limpieza,l,1,0.75,6,Wong
+80,Jabón Líquido,Limpieza,l,1,0.5,9,Wong
+81,Quitagrasa,Limpieza,l,0.5,0.5,8,Wong
+82,Quitasarro,Limpieza,l,0.5,0.5,6,Wong
+83,Limpiavidrios,Limpieza,l,0.5,0.5,6,Wong
+84,Esponjas,Limpieza,u,1,2,2,Wong
+85,Paños Amarillos,Limpieza,u,1,2,3,Wong
+91,Delivery,Servicio,s/.,4,1,5,Rappi

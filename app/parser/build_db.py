@@ -296,35 +296,37 @@ def run_import(db_path: Path, review_dir: Path) -> dict:
         return {"inserted": 0, "skipped_dup": 0, "files_processed": 0, "message": "No CSV files found"}
 
     conn = sqlite3.connect(db_path)
-    for col, typ in [("matched_subcategory", "TEXT"), ("tags", "TEXT")]:
-        try:
-            conn.execute(f"ALTER TABLE purchases ADD COLUMN {col} {typ}")
-        except sqlite3.OperationalError:
-            pass
-    conn.executescript(SCHEMA)
-    conn.executescript(VIEWS)
+    try:
+        for col, typ in [("matched_subcategory", "TEXT"), ("tags", "TEXT")]:
+            try:
+                conn.execute(f"ALTER TABLE purchases ADD COLUMN {col} {typ}")
+            except sqlite3.OperationalError:
+                pass
+        conn.executescript(SCHEMA)
+        conn.executescript(VIEWS)
 
-    existing = _existing_dedup_keys(conn)
+        existing = _existing_dedup_keys(conn)
 
-    # File-level dedup: multiple CSVs for same date → keep largest non-TOTAL row count
-    date_groups: dict[str, list[Path]] = defaultdict(list)
-    for path in csv_files:
-        m = DATE_PAT.match(path.name)
-        key = m.group(1) if m else path.stem
-        date_groups[key].append(path)
+        # File-level dedup: multiple CSVs for same date → keep largest non-TOTAL row count
+        date_groups: dict[str, list[Path]] = defaultdict(list)
+        for path in csv_files:
+            m = DATE_PAT.match(path.name)
+            key = m.group(1) if m else path.stem
+            date_groups[key].append(path)
 
-    selected: list[Path] = []
-    for paths in sorted(date_groups.values(), key=lambda ps: ps[0].name):
-        selected.append(max(paths, key=_csv_item_count) if len(paths) > 1 else paths[0])
+        selected: list[Path] = []
+        for paths in sorted(date_groups.values(), key=lambda ps: ps[0].name):
+            selected.append(max(paths, key=_csv_item_count) if len(paths) > 1 else paths[0])
 
-    total_inserted = total_dup = 0
-    for path in selected:
-        inserted, _, skipped_dup = _import_csv(conn, path, existing)
-        total_inserted += inserted
-        total_dup += skipped_dup
+        total_inserted = total_dup = 0
+        for path in selected:
+            inserted, _, skipped_dup = _import_csv(conn, path, existing)
+            total_inserted += inserted
+            total_dup += skipped_dup
 
-    conn.commit()
-    conn.close()
+        conn.commit()
+    finally:
+        conn.close()
 
     return {
         "inserted": total_inserted,

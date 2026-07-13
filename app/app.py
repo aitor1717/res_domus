@@ -33,9 +33,14 @@ def create_app():
         OUTPUT_DIR=str(cfg.OUTPUT_DIR),
         CHAT_LOG_PATH=str(cfg.CHAT_LOG_PATH),
         NTFY_TOPIC=cfg.NTFY_TOPIC,
+        INSTANCE_LABEL=getattr(cfg, "INSTANCE_LABEL", "res domus"),
         BASIC_AUTH_USER=cfg.BASIC_AUTH_USER,
         BASIC_AUTH_PASS=cfg.BASIC_AUTH_PASS,
     )
+
+    @app.context_processor
+    def inject_globals():
+        return {"instance_label": app.config["INSTANCE_LABEL"]}
 
     # Warn (don't crash, don't create) if the DB is missing or not initialized yet
     db_path = Path(app.config["DB_PATH"])

@@ -240,8 +240,42 @@ async function saveToLibrary(idx) {
   showReview(window._reviewItems);
 }
 
-function esc(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+/* esc() is shared — see static/js/utils.js */
+
+async function retryParse() {
+  if (!sessionId) return;
+  const note = (document.getElementById('retryNote').value || '').trim();
+  setStatus(ulang() === 'es' ? 're-parseando…' : 're-parsing…');
+
+  const res = await fetch('/api/upload/retry-parse', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({session_id: sessionId, note}),
+  });
+  if (!res.ok) {
+    const d = await res.json().catch(() => ({}));
+    setStatus(d.error || ut('parseErr'), true);
+    return;
+  }
+
+  const rEvt = new EventSource(`/api/upload/retry-status/${sessionId}`);
+  rEvt.addEventListener('progress', e => {
+    const d = JSON.parse(e.data);
+    setStatus(d.message || ut('processing'));
+  });
+  rEvt.addEventListener('done', e => {
+    const d = JSON.parse(e.data);
+    rEvt.close();
+    setStatus(ulang() === 'es'
+      ? `${d.count} items re-parseados — revisa y confirma`
+      : `${d.count} items re-parsed — review & confirm`);
+    showReview(d.items);
+  });
+  rEvt.addEventListener('error', e => {
+    const d = JSON.parse(e.data || '{}');
+    rEvt.close();
+    setStatus(d.message || ut('parseErr'), true);
+  });
 }
 
 async function confirmImport() {

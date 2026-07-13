@@ -29,7 +29,7 @@ def entries():
         SELECT id, datetime, raw_name, matched_id, matched_category, matched_subcategory,
                quantity, unit, unit_price, total_price, source, gpt_notes
         FROM purchases
-        WHERE raw_name != 'TOTAL'
+        WHERE raw_name != 'TOTAL' AND total_price > 0
     """
     params: list = []
     if start:

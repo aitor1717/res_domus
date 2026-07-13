@@ -20,20 +20,25 @@ MODEL_PARSER = os.environ.get("MODEL_PARSER", "claude-sonnet-4-6")
 MODEL_CHAT   = os.environ.get("MODEL_CHAT", "claude-haiku-4-5")
 
 # Paths
-DB_PATH     = DATA_DIR / "res_domus.db"
-AUX_CSV     = BASE_DIR / "aux_items.csv"
-UPLOAD_DIR  = DATA_DIR / "input"
-REVIEW_DIR  = DATA_DIR / "review"
-ARCHIVE_DIR = DATA_DIR / "archive"
-OUTPUT_DIR  = DATA_DIR / "output"
+DB_PATH       = DATA_DIR / "res_domus.db"
+AUX_CSV       = BASE_DIR / "aux_items.csv"
+UPLOAD_DIR    = DATA_DIR / "input"
+REVIEW_DIR    = DATA_DIR / "review"
+ARCHIVE_DIR   = DATA_DIR / "archive"
+OUTPUT_DIR    = DATA_DIR / "output"
+CHAT_LOG_PATH = DATA_DIR / "chat_log.jsonl"
 
-# Flask
-SECRET_KEY  = os.environ.get("SECRET_KEY", "change-me-in-production")
-DEBUG       = os.environ.get("FLASK_DEBUG", "0") == "1"
+# ntfy.sh push notifications — leave blank to disable
+NTFY_TOPIC = os.environ.get("NTFY_TOPIC", "")
 
 # HTTP Basic Auth — leave both blank to disable (not recommended once deployed)
 BASIC_AUTH_USER = os.environ.get("BASIC_AUTH_USER", "")
 BASIC_AUTH_PASS = os.environ.get("BASIC_AUTH_PASS", "")
+
+# Flask
+SECRET_KEY     = os.environ.get("SECRET_KEY", "change-me-in-production")
+DEBUG          = os.environ.get("FLASK_DEBUG", "0") == "1"
+INSTANCE_LABEL = os.environ.get("INSTANCE_LABEL", "res domus")
 
 
 def ensure_dirs():

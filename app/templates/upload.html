@@ -64,6 +64,18 @@
     white-space: nowrap;
   }
   .lib-btn:hover { background: rgba(255,224,163,.18); }
+  .retry-wrap { display: flex; gap: 8px; margin-bottom: 10px; }
+  .retry-input {
+    flex: 1; padding: 7px 10px; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; font-family: var(--mono); font-size: 11px; color: var(--text); outline: none;
+  }
+  .retry-input:focus { border-color: var(--muted); }
+  .retry-btn {
+    padding: 7px 14px; background: rgba(166,226,46,.07); border: 1px solid rgba(166,226,46,.25);
+    border-radius: 8px; font-family: var(--mono); font-size: 10px; color: var(--muted); cursor: pointer;
+    white-space: nowrap;
+  }
+  .retry-btn:hover { border-color: rgba(166,226,46,.5); color: var(--green); }
 </style>
 {% endblock %}
 
@@ -102,6 +114,10 @@
           </thead>
           <tbody id="reviewBody"></tbody>
         </table>
+      </div>
+      <div class="retry-wrap">
+        <input type="text" id="retryNote" class="retry-input" placeholder="note for re-parse (optional) — e.g. '2-for-1 promo', 'missing item on page 2'">
+        <button class="retry-btn i18n" data-en="re-parse" data-es="re-parsear" onclick="retryParse()">re-parsear</button>
       </div>
       <button class="confirm-import-btn i18n" data-en="confirm & import" data-es="confirmar e importar" onclick="confirmImport()">confirmar e importar</button>
     </div>

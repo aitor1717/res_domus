@@ -134,10 +134,7 @@ document.getElementById('itemModal').addEventListener('click', e => {
   if (e.target === e.currentTarget) closeModal();
 });
 
-/* ── UTILS ── */
-function esc(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}
+/* esc() is shared — see static/js/utils.js */
 
 /* ── SUGGESTED CANON ── */
 async function loadSuggestions() {

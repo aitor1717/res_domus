@@ -5,12 +5,15 @@ page and by the upload review table's "save to library" action.
 
 import csv
 import io
+import threading
 from pathlib import Path
 from flask import Blueprint, jsonify, request, current_app
 
 bp = Blueprint("items", __name__, url_prefix="/api/items")
 
 FIELDS = ["id", "item", "unit", "category", "subcategory", "synonyms", "notes", "tags"]
+
+_csv_lock = threading.Lock()
 
 
 def _load() -> list[dict]:
@@ -59,7 +62,8 @@ def item_suggestions():
 @bp.get("")
 def list_items():
     q = (request.args.get("q") or "").lower().strip()
-    rows = _load()
+    with _csv_lock:
+        rows = _load()
     if q:
         rows = [
             r for r in rows
@@ -73,44 +77,47 @@ def list_items():
 @bp.post("")
 def create_item():
     data = request.get_json(force=True)
-    rows = _load()
-    new_row = {
-        "id":          str(_next_id(rows)),
-        "item":        (data.get("item") or "").strip(),
-        "unit":        (data.get("unit") or "").strip(),
-        "category":    (data.get("category") or "").strip(),
-        "subcategory": (data.get("subcategory") or "").strip(),
-        "synonyms":    (data.get("synonyms") or "").strip(),
-        "notes":       (data.get("notes") or "").strip(),
-        "tags":        (data.get("tags") or "").strip(),
-    }
-    if not new_row["item"]:
-        return jsonify({"error": "item name required"}), 400
-    rows.append(new_row)
-    _save(rows)
+    with _csv_lock:
+        rows = _load()
+        new_row = {
+            "id":          str(_next_id(rows)),
+            "item":        (data.get("item") or "").strip(),
+            "unit":        (data.get("unit") or "").strip(),
+            "category":    (data.get("category") or "").strip(),
+            "subcategory": (data.get("subcategory") or "").strip(),
+            "synonyms":    (data.get("synonyms") or "").strip(),
+            "notes":       (data.get("notes") or "").strip(),
+            "tags":        (data.get("tags") or "").strip(),
+        }
+        if not new_row["item"]:
+            return jsonify({"error": "item name required"}), 400
+        rows.append(new_row)
+        _save(rows)
     return jsonify(new_row), 201
 
 
 @bp.patch("/<item_id>")
 def update_item(item_id: str):
     data = request.get_json(force=True)
-    rows = _load()
-    for row in rows:
-        if str(row.get("id")) == item_id:
-            for field in FIELDS:
-                if field in data and field != "id":
-                    row[field] = data[field]
-            _save(rows)
-            return jsonify(row)
+    with _csv_lock:
+        rows = _load()
+        for row in rows:
+            if str(row.get("id")) == item_id:
+                for field in FIELDS:
+                    if field in data and field != "id":
+                        row[field] = data[field]
+                _save(rows)
+                return jsonify(row)
     return jsonify({"error": "not found"}), 404
 
 
 @bp.delete("/<item_id>")
 def delete_item(item_id: str):
-    rows = _load()
-    original = len(rows)
-    rows = [r for r in rows if str(r.get("id")) != item_id]
-    if len(rows) == original:
-        return jsonify({"error": "not found"}), 404
-    _save(rows)
+    with _csv_lock:
+        rows = _load()
+        original = len(rows)
+        rows = [r for r in rows if str(r.get("id")) != item_id]
+        if len(rows) == original:
+            return jsonify({"error": "not found"}), 404
+        _save(rows)
     return jsonify({"deleted": item_id})

@@ -11,6 +11,7 @@ import sqlite3
 import threading
 from datetime import date, datetime, timezone
 from pathlib import Path
+from urllib.parse import quote
 from urllib.request import urlopen, Request
 
 import anthropic
@@ -29,6 +30,49 @@ _JSON_FENCE_RE = re.compile(r"```(?:json)?\s*(.*?)```", re.DOTALL | re.IGNORECAS
 _SQL_FENCE_RE = re.compile(r"```(?:sql)?\s*(.*?)```", re.DOTALL | re.IGNORECASE)
 _SQL_STATEMENT_RE = re.compile(r"(SELECT\b.*)", re.DOTALL | re.IGNORECASE)
 _RELIABILITY_GATED_RE = re.compile(r"v_needed_soon|v_stock_estimates|is_reliable", re.IGNORECASE)
+
+# Every table/view the SQL assistant is allowed to touch — matches the schema
+# documented in SQL_ASSISTANT_SYSTEM. Deliberately excludes app_settings
+# (holds the Anthropic API key, see db_settings.py) and sqlite internals, so a
+# generated query can't read secrets or enumerate the schema even if it
+# somehow ignores the documented tables.
+_ALLOWED_TABLES = {
+    "purchases", "budget",
+    "v_item_stats", "v_monthly_spend", "v_price_history", "v_anomalies",
+    "v_needed_soon", "v_stock_estimates", "v_budget", "v_top_spenders",
+    "v_price_by_source",
+}
+_TABLE_REF_RE = re.compile(r"\b(?:FROM|JOIN)\s+([A-Za-z_][A-Za-z0-9_]*)", re.IGNORECASE)
+_CTE_NAME_RE = re.compile(r"(?:\bWITH\s+|,\s*)([A-Za-z_][A-Za-z0-9_]*)\s+AS\s*\(", re.IGNORECASE)
+
+
+def _sql_scope_ok(sql: str) -> bool:
+    """Reject a query that references anything outside the documented schema.
+    CTE aliases (WITH x AS (...)) are allowed as reference targets, but the
+    tables/views their bodies read from are still checked against the same
+    allow-list, so wrapping a disallowed table in a CTE doesn't bypass this."""
+    cte_names = {m.lower() for m in _CTE_NAME_RE.findall(sql)}
+    refs = {m.lower() for m in _TABLE_REF_RE.findall(sql)}
+    return bool(refs) and refs <= (_ALLOWED_TABLES | cte_names)
+
+
+def _sanitize_rows_for_formatting(rows: list[dict]) -> list[dict]:
+    """Strip est_stock_remaining/reorder_urgency before rows reach the
+    answer-formatting prompt, precomputing days_of_stock_left where derivable.
+    Makes the "never describe these as days" rule (see build_sql_format_prompt)
+    structurally true instead of depending on the formatting model to remember
+    a prose warning — the raw fields just aren't there to mislabel."""
+    sanitized = []
+    for row in rows:
+        row = dict(row)
+        if "days_of_stock_left" not in row:
+            est, daily = row.get("est_stock_remaining"), row.get("daily_consumption")
+            if est is not None and daily:
+                row["days_of_stock_left"] = round(est / daily, 1)
+        row.pop("est_stock_remaining", None)
+        row.pop("reorder_urgency", None)
+        sanitized.append(row)
+    return sanitized
 
 
 def _extract_sql(text: str) -> str:
@@ -278,10 +322,18 @@ def answer_question(question: str, db_path: str, lang: str = "en", history: list
         raise RuntimeError(f"Claude API error: {e}") from e
     sql = _extract_sql(sql_resp.content[0].text)
 
-    sql_failed = sql == "CANNOT_ANSWER" or not sql.upper().startswith("SELECT")
+    sql_failed = sql == "CANNOT_ANSWER" or not sql.upper().startswith("SELECT") or not _sql_scope_ok(sql)
     rows = []
     if not sql_failed:
-        conn = sqlite3.connect(db_path)
+        # Opened read-only: the SELECT-only check above is layer one, this is
+        # layer two — a generated query can't gain write access even if it
+        # somehow slipped past the string check.
+        try:
+            conn = sqlite3.connect(f"file:{quote(db_path)}?mode=ro", uri=True)
+        except sqlite3.Error:
+            sql_failed = True
+
+    if not sql_failed:
         try:
             cur = conn.execute(sql)
             rows = _rows_as_dicts(cur)
@@ -297,7 +349,7 @@ def answer_question(question: str, db_path: str, lang: str = "en", history: list
                     system=system_block, messages=retry_msgs,
                 )
                 sql2 = _extract_sql(retry_resp.content[0].text)
-                if sql2 != "CANNOT_ANSWER" and sql2.upper().startswith("SELECT"):
+                if sql2 != "CANNOT_ANSWER" and sql2.upper().startswith("SELECT") and _sql_scope_ok(sql2):
                     cur2 = conn.execute(sql2)
                     rows = _rows_as_dicts(cur2)
                     sql = sql2
@@ -324,7 +376,7 @@ def answer_question(question: str, db_path: str, lang: str = "en", history: list
         return {"answer": msg, "sql": None, "rows": []}
 
     low_data_hint = not rows and bool(_RELIABILITY_GATED_RE.search(sql))
-    format_prompt = build_sql_format_prompt(question, sql, rows, low_data_hint, lang)
+    format_prompt = build_sql_format_prompt(question, sql, _sanitize_rows_for_formatting(rows), low_data_hint, lang)
     try:
         fmt_resp = client.messages.create(
             model=model,
@@ -338,6 +390,7 @@ def answer_question(question: str, db_path: str, lang: str = "en", history: list
 
 def _get_notice(db_path: str, lang: str = "en") -> str | None:
     """Return one terse session-opener notice if something is noteworthy, else None."""
+    conn = None
     try:
         conn = sqlite3.connect(db_path)
         today = date.today()
@@ -353,6 +406,25 @@ def _get_notice(db_path: str, lang: str = "en") -> str | None:
                 return f"Presupuesto al {pct}% — quedan {days_left} días."
             return f"Budget at {pct}% — {days_left} days remaining."
 
+        # Priority 1.5: any item with 0–3 days of stock left — concrete and actionable.
+        # Reads v_stock_estimates.days_of_stock_left rather than recomputing
+        # est_stock_remaining/daily_consumption by hand (that view already
+        # applies the is_reliable/daily_consumption>0 gating too).
+        tp = conn.execute(
+            "SELECT matched_id, days_of_stock_left "
+            "FROM v_stock_estimates "
+            "WHERE days_of_stock_left > 0 AND days_of_stock_left <= 3 "
+            "  AND LOWER(COALESCE(matched_category,'')) NOT IN ('delivery','courier','servicio','service') "
+            "ORDER BY days_of_stock_left ASC LIMIT 1"
+        ).fetchone()
+        if tp:
+            item, days = tp[0], max(1, int(tp[1] or 1))
+            d_str = f"{days} day{'s' if days != 1 else ''}"
+            if lang == "es":
+                d_str_es = f"{days} día{'s' if days != 1 else ''}"
+                return f"Te queda{'n' if days != 1 else ''} solo {d_str_es} de {item}."
+            return f"You'll run out of {item} in {d_str}."
+
         # Priority 2: price anomaly in last 7 days
         row = conn.execute(
             "SELECT matched_id, direction, datetime FROM v_anomalies "
@@ -367,23 +439,31 @@ def _get_notice(db_path: str, lang: str = "en") -> str | None:
             adj = "unusually high" if direction == "high" else "unusually low"
             return f"{item} had a {adj} price on {dt}."
 
-        # Priority 3: item 90+ days overdue
+        # Priority 3: most urgent item (running low or overdue)
         row = conn.execute(
-            "SELECT matched_id, ROUND(days_since_last - avg_interval_days, 0) AS overdue "
+            "SELECT matched_id, reorder_urgency, days_since_last "
             "FROM v_item_stats "
-            "WHERE is_reliable = 1 AND days_since_last - avg_interval_days > 90 "
-            "  AND LOWER(COALESCE(matched_category,'')) NOT IN ('delivery','courier','servicio') "
-            "ORDER BY overdue DESC LIMIT 1"
+            "WHERE is_reliable = 1 AND reorder_urgency >= 0.7 "
+            "  AND LOWER(COALESCE(matched_category,'')) NOT IN ('delivery','courier','servicio','service') "
+            "ORDER BY reorder_urgency DESC LIMIT 1"
         ).fetchone()
         if row:
-            item, days = row[0], int(row[1])
-            if lang == "es":
-                return f"{item} lleva {days} días de retraso."
-            return f"{item} is {days} days overdue."
-
-        conn.close()
+            item, urgency, days_since = row[0], row[1], int(row[2] or 0)
+            suffix_es = f"hace {days_since} días que no lo compras."
+            suffix_en = f"last bought {days_since} days ago."
+            if urgency >= 1.0:
+                if lang == "es":
+                    return f"Te estás quedando sin {item} — {suffix_es}"
+                return f"You're about to run out of {item} — {suffix_en}"
+            else:
+                if lang == "es":
+                    return f"Pronto necesitarás {item} — {suffix_es}"
+                return f"You'll need {item} soon — {suffix_en}"
     except Exception:
         pass
+    finally:
+        if conn is not None:
+            conn.close()
     return None
 
 

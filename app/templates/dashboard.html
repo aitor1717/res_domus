@@ -55,17 +55,17 @@
 
   /* ── NEEDED SOON circles ── */
   .needed-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px 4px; }
-  .ni-placeholder .ni-circ { width: 38px; height: 38px; }
+  .ni-placeholder .ni-circ { width: 46px; height: 46px; }
   .ni-placeholder .ni-name { font-size: 8px; }
   .needed-tag  { grid-column: 1 / -1; font-family: var(--mono); font-size: 11px; padding: 9px 13px; border-radius: 8px; border: 1px solid; }
   .needed-ok     { color: var(--green); background: rgba(255,224,163,.08); border-color: rgba(255,224,163,.3); }
   .needed-nodata { color: var(--dim2);  background: rgba(255,157,110,.04); border-color: var(--border); }
   .ni { display: flex; flex-direction: column; align-items: center; text-align: center; animation: fadeUp .4s ease var(--nd, 0s) both; }
-  .ni-circ { position: relative; width: 56px; height: 56px; margin-bottom: 4px; }
-  .ni-circ svg { width: 100%; height: 100%; display: block; }
+  .ni-circ { position: relative; width: 66px; height: 66px; margin-bottom: 4px; border-radius: 50%; }
+  .ni-circ svg { width: 100%; height: 100%; display: block; overflow: visible; }
   .ni-arc { stroke-dasharray: 100; stroke-dashoffset: 100; transition: stroke-dashoffset .7s cubic-bezier(.4,0,.2,1); }
   .ni-val { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); font-family: var(--mono); font-weight: 700; color: var(--bright); line-height: 1.1; pointer-events: none; text-align: center; }
-  .ni-val-pct  { font-size: 10px; display: block; }
+  .ni-val-pct  { font-size: 11px; display: block; }
   .ni-val-days { font-size: 8px; color: var(--dim2); display: block; }
   .ni-name { font-size: 9px; color: var(--dim2); margin-top: 2px; }
 
@@ -183,15 +183,15 @@
     </div>
     <div class="kpigrid">
       <div class="kpicell">
-        <div class="kpi-val" id="kpi-total"><span class="curr-kpi">S/.</span>—</div>
-        <div class="kpi-right"><span class="kpi-lbl i18n" data-en="this month" data-es="este mes">this month</span><span class="kpi-delta" id="kpi-total-delta">—</span></div>
+        <div class="kpi-val" id="kpi-total"><span class="curr-kpi"></span>—</div>
+        <div class="kpi-right"><span class="kpi-lbl" id="kpi-total-lbl">this month</span><span class="kpi-delta" id="kpi-total-delta">—</span></div>
       </div>
       <div class="kpicell">
         <div class="kpi-val" id="kpi-orders">—</div>
         <div class="kpi-right"><span class="kpi-lbl i18n" data-en="orders" data-es="pedidos">orders</span><span class="kpi-delta" id="kpi-orders-delta">—</span></div>
       </div>
       <div class="kpicell">
-        <div class="kpi-val" id="kpi-avg"><span class="curr-kpi">S/.</span>—</div>
+        <div class="kpi-val" id="kpi-avg"><span class="curr-kpi"></span>—</div>
         <div class="kpi-right"><span class="kpi-lbl i18n" data-en="avg ticket" data-es="ticket promedio">avg ticket</span><span class="kpi-delta" id="kpi-avg-delta">—</span></div>
       </div>
       <div class="kpicell">
@@ -216,19 +216,11 @@
     </div>
   </div>
 
-  <!-- NEEDED SOON (own card, expands downward) -->
+  <!-- NEEDED SOON -->
   <div class="card block-needed" id="blockNeeded">
     <div class="card-label" id="lbl-needed">running low</div>
     <div class="needed-grid" id="neededGrid"></div>
     <div id="neededNote" style="margin-top:8px"></div>
-    <div class="seemore-row">
-      <button class="seemore-tab" id="needExpBtn" onclick="toggleNeeded()">
-        <span id="needExpLabel">see more</span>
-      </button>
-    </div>
-    <div class="needed-extra" id="neededExtra">
-      <div class="needed-extra-grid" id="neededGridExtra"></div>
-    </div>
   </div>
 
   <!-- TOP SPEND -->

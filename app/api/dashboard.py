@@ -3,13 +3,15 @@ Dashboard endpoints: KPIs, spend trends, price history, anomalies, budget,
 inventory estimates. Reads from the SQLite views built by parser/build_db.py.
 """
 
+import calendar
 import sqlite3
-from datetime import date, timedelta
+from datetime import date
 from flask import Blueprint, jsonify, current_app
 
 bp = Blueprint("dashboard", __name__, url_prefix="/api")
 
-DELIVERY_CATEGORIES = {"Delivery", "Courier", "Servicio"}
+DELIVERY_CATEGORIES = {"Delivery", "Courier", "Servicio", "Service"}
+_DELIVERY_SQL_LIST = "(" + ",".join(f"'{c}'" for c in sorted(DELIVERY_CATEGORIES)) + ")"
 
 
 def _db():
@@ -21,52 +23,52 @@ def _rows_as_dicts(cur: sqlite3.Cursor) -> list[dict]:
     return [dict(zip(cols, row)) for row in cur.fetchall()]
 
 
+def _totals(conn: sqlite3.Connection, clause: str) -> tuple[float, int]:
+    """(total_spent, order_count) for purchases matching an extra WHERE clause fragment."""
+    row = conn.execute(f"""
+        SELECT ROUND(SUM(total_price),2), COUNT(DISTINCT source || datetime)
+        FROM purchases WHERE raw_name != 'TOTAL' AND total_price > 0 {clause}
+    """).fetchone() or (0, 0)
+    return row[0] or 0, row[1] or 0
+
+
 @bp.get("/kpis")
 def kpis():
     from flask import request as _req
     period = _req.args.get("period", "30d")
-    _days = {"30d": 30, "90d": 90, "all": 36500}.get(period, 30)
-    date_clause = f"AND datetime >= date('now', '-{_days} days')"
-    prev_clause = f"AND datetime >= date('now', '-{_days * 2} days') AND datetime < date('now', '-{_days} days')"
-
     conn = _db()
     today = date.today()
-    cur_month = today.strftime("%Y-%m")
+    cur_year  = today.strftime("%Y")
+    prev_year = str(today.year - 1)
 
-    # Current period totals
-    cur = conn.execute(f"""
-        SELECT ROUND(SUM(total_price),2) AS total,
-               COUNT(DISTINCT source || datetime) AS orders
-        FROM purchases
-        WHERE raw_name != 'TOTAL' {date_clause}
-    """)
-    cur_row = cur.fetchone() or (0, 0)
-    cur_total, cur_orders = cur_row[0] or 0, cur_row[1] or 0
-
-    # Previous same-length period totals
-    prev = conn.execute(f"""
-        SELECT ROUND(SUM(total_price),2) AS total,
-               COUNT(DISTINCT source || datetime) AS orders
-        FROM purchases
-        WHERE raw_name != 'TOTAL' {prev_clause}
-    """)
-    prev_row = prev.fetchone() or (0, 0)
-    prev_total, prev_orders = prev_row[0] or 0, prev_row[1] or 0
+    if period == "all":
+        # YTD vs same YTD last year
+        ytd_clause  = f"AND strftime('%Y', datetime) = '{cur_year}'"
+        pytd_clause = (
+            f"AND strftime('%Y', datetime) = '{prev_year}' "
+            f"AND strftime('%m-%d', datetime) <= '{today.strftime('%m-%d')}'"
+        )
+        cur_total,  cur_orders  = _totals(conn, ytd_clause)
+        prev_total, prev_orders = _totals(conn, pytd_clause)
+    else:
+        _days = {"30d": 30, "90d": 90}.get(period, 30)
+        date_clause = f"AND datetime >= date('now', '-{_days} days')"
+        prev_clause = f"AND datetime >= date('now', '-{_days * 2} days') AND datetime < date('now', '-{_days} days')"
+        cur_total,  cur_orders  = _totals(conn, date_clause)
+        prev_total, prev_orders = _totals(conn, prev_clause)
 
     avg_order = round(cur_total / cur_orders, 2) if cur_orders else 0
     prev_avg  = round(prev_total / prev_orders, 2) if prev_orders else 0
 
-    # Tracked items
+    # Tracked items + category breakdown
     tracked = conn.execute(
         "SELECT COUNT(DISTINCT matched_id) FROM purchases WHERE matched_id IS NOT NULL"
     ).fetchone()[0]
-    new_this_month = conn.execute("""
-        SELECT COUNT(DISTINCT matched_id) FROM (
-            SELECT matched_id, MIN(strftime('%Y-%m', datetime)) AS first_month
-            FROM purchases WHERE matched_id IS NOT NULL
-            GROUP BY matched_id
-        ) WHERE first_month = ?
-    """, (cur_month,)).fetchone()[0]
+    category_count = conn.execute(
+        "SELECT COUNT(DISTINCT matched_category) FROM purchases "
+        f"WHERE matched_id IS NOT NULL AND matched_category IS NOT NULL "
+        f"AND matched_category NOT IN {_DELIVERY_SQL_LIST}"
+    ).fetchone()[0]
 
     conn.close()
 
@@ -83,7 +85,7 @@ def kpis():
         "avg_order":      avg_order,
         "avg_order_delta": delta_pct(avg_order, prev_avg),
         "tracked_items":  tracked,
-        "new_this_month": new_this_month,
+        "category_count": category_count,
     })
 
 
@@ -99,8 +101,7 @@ def budget():
     data = dict(zip(cols, row))
 
     today = date.today()
-    days_in_month = (today.replace(month=today.month % 12 + 1, day=1) - timedelta(days=1)).day if today.month < 12 else 31
-    data["days_remaining"] = days_in_month - today.day
+    data["days_remaining"] = calendar.monthrange(today.year, today.month)[1] - today.day
 
     # Rolling 30-day spend vs the same 18-month baseline average used for the
     # budget bar — doesn't reset at the calendar month boundary like
@@ -122,8 +123,6 @@ def chart():
     from flask import request
     period = request.args.get("period", "30d")
     conn = _db()
-
-    DELIVERY_CATS = tuple(DELIVERY_CATEGORIES)
 
     MES = ['','ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic']
 
@@ -149,47 +148,48 @@ def chart():
         except Exception:
             return iso_month or ''
 
+    DEL = _DELIVERY_SQL_LIST
+    GROC = "('Abarrotes','Pantry')"
+    MEAT = "('Carnes','Meat & Seafood')"
+
+    SUMS = f"""
+        ROUND(SUM(CASE WHEN matched_category NOT IN {DEL} THEN total_price ELSE 0 END), 2) AS total,
+        ROUND(SUM(CASE WHEN matched_category IN {GROC} THEN total_price ELSE 0 END), 2) AS groceries,
+        ROUND(SUM(CASE WHEN matched_category IN {MEAT} THEN total_price ELSE 0 END), 2) AS meat,
+        ROUND(SUM(CASE WHEN matched_category IN {DEL} THEN total_price ELSE 0 END), 2) AS delivery
+    """
+    BASE = "FROM purchases WHERE raw_name != 'TOTAL' AND total_price > 0"
+
+    # Each view targets ~15 points with bucket size proportional to the period,
+    # so 30d→90d→all feel like coherent zoom-out levels of the same data.
     if period == "30d":
-        rows = conn.execute("""
-            SELECT strftime('%Y-%W', datetime) AS week,
-                   MIN(datetime) AS min_date,
-                   ROUND(SUM(CASE WHEN matched_category NOT IN ('Delivery','Courier','Servicio') THEN total_price ELSE 0 END), 2) AS total,
-                   ROUND(SUM(CASE WHEN matched_category = 'Abarrotes' THEN total_price ELSE 0 END), 2) AS abarrotes,
-                   ROUND(SUM(CASE WHEN matched_category = 'Carnes' THEN total_price ELSE 0 END), 2) AS carnes,
-                   ROUND(SUM(CASE WHEN matched_category IN ('Delivery','Courier','Servicio') THEN total_price ELSE 0 END), 2) AS delivery
-            FROM purchases
-            WHERE raw_name != 'TOTAL' AND datetime >= date('now', '-30 days')
-            GROUP BY week ORDER BY week
+        # 2-day buckets → ~15 points
+        rows = conn.execute(f"""
+            SELECT CAST(julianday(datetime) / 2 AS INTEGER) AS bucket,
+                   MIN(datetime) AS min_date, {SUMS}
+            {BASE} AND datetime >= date('now', '-30 days')
+            GROUP BY bucket ORDER BY bucket
         """).fetchall()
         rows = [(r[0], fmt_label_weekly(r[1]), r[2], r[3], r[4], r[5]) for r in rows]
     elif period == "90d":
-        rows = conn.execute("""
-            SELECT strftime('%Y-%m', datetime) AS bucket,
-                   strftime('%Y-%m', MIN(datetime)) AS min_month,
-                   ROUND(SUM(CASE WHEN matched_category NOT IN ('Delivery','Courier','Servicio') THEN total_price ELSE 0 END), 2) AS total,
-                   ROUND(SUM(CASE WHEN matched_category = 'Abarrotes' THEN total_price ELSE 0 END), 2) AS abarrotes,
-                   ROUND(SUM(CASE WHEN matched_category = 'Carnes' THEN total_price ELSE 0 END), 2) AS carnes,
-                   ROUND(SUM(CASE WHEN matched_category IN ('Delivery','Courier','Servicio') THEN total_price ELSE 0 END), 2) AS delivery
-            FROM purchases
-            WHERE raw_name != 'TOTAL' AND datetime >= date('now', '-90 days')
+        # 6-day buckets → ~15 points
+        rows = conn.execute(f"""
+            SELECT CAST(julianday(datetime) / 6 AS INTEGER) AS bucket,
+                   MIN(datetime) AS min_date, {SUMS}
+            {BASE} AND datetime >= date('now', '-90 days')
             GROUP BY bucket ORDER BY bucket
         """).fetchall()
-        rows = [(r[0], fmt_label_monthly(r[1]), r[2], r[3], r[4], r[5]) for r in rows]
-    else:  # all
-        rows = conn.execute("""
+        rows = [(r[0], fmt_label_weekly(r[1]), r[2], r[3], r[4], r[5]) for r in rows]
+    else:  # all — monthly buckets → ~14 points
+        rows = conn.execute(f"""
             SELECT strftime('%Y-%m', datetime) AS bucket,
-                   strftime('%Y-%m', MIN(datetime)) AS min_month,
-                   ROUND(SUM(CASE WHEN matched_category NOT IN ('Delivery','Courier','Servicio') THEN total_price ELSE 0 END), 2) AS total,
-                   ROUND(SUM(CASE WHEN matched_category = 'Abarrotes' THEN total_price ELSE 0 END), 2) AS abarrotes,
-                   ROUND(SUM(CASE WHEN matched_category = 'Carnes' THEN total_price ELSE 0 END), 2) AS carnes,
-                   ROUND(SUM(CASE WHEN matched_category IN ('Delivery','Courier','Servicio') THEN total_price ELSE 0 END), 2) AS delivery
-            FROM purchases
-            WHERE raw_name != 'TOTAL'
+                   MIN(datetime) AS min_date, {SUMS}
+            {BASE}
             GROUP BY bucket ORDER BY bucket
         """).fetchall()
         rows = [(r[0], fmt_label_all(r[1]), r[2], r[3], r[4], r[5]) for r in rows]
 
-    # Anomaly: most recent anomalous week/month
+    # Anomaly: most recent anomalous month — match against min_date of each bucket
     anomaly_row = conn.execute("""
         SELECT strftime('%Y-%m', datetime) AS bucket, COUNT(*) AS cnt
         FROM v_anomalies GROUP BY bucket ORDER BY bucket DESC LIMIT 1
@@ -197,55 +197,80 @@ def chart():
 
     conn.close()
 
-    labels, totals, abarrotes, carnes, delivery = [], [], [], [], []
+    labels, totals, groceries, meat, delivery = [], [], [], [], []
     for r in rows:
         labels.append(r[1])
         totals.append(r[2] or 0)
-        abarrotes.append(r[3] or 0)
-        carnes.append(r[4] or 0)
+        groceries.append(r[3] or 0)
+        meat.append(r[4] or 0)
         delivery.append(r[5] or 0)
 
     delivery_above = [t + d for t, d in zip(totals, delivery)]
 
-    # Find anomaly index in current period data
     anom_idx = None
     anom_label_es = anom_label_en = ""
     if anomaly_row:
-        anom_bucket = anomaly_row[0]
+        anom_month = anomaly_row[0][:7]  # YYYY-MM
         for i, r in enumerate(rows):
-            if r[0].startswith(anom_bucket[:7]):
+            min_date = str(r[1] or "")
+            if min_date[:7] == anom_month:
                 anom_idx = i
                 anom_label_es = f"anomalia · {labels[i]}"
                 anom_label_en = f"anomaly · {labels[i]}"
                 break
 
     return jsonify({
-        "labels":       labels,
-        "total":        totals,
-        "abarrotes":    abarrotes,
-        "carnes":       carnes,
-        "delivery":     delivery,
+        "labels":        labels,
+        "total":         totals,
+        "groceries":     groceries,
+        "meat":          meat,
+        "delivery":      delivery,
         "deliveryAbove": delivery_above,
-        "anomalyIdx":   anom_idx,
-        "anomalyLabel": {"es": anom_label_es, "en": anom_label_en},
+        "anomalyIdx":    anom_idx,
+        "anomalyLabel":  {"es": anom_label_es, "en": anom_label_en},
     })
 
 
 @bp.get("/needed-soon")
 def needed_soon():
     conn = _db()
-    # Return up to 9 reliable items regardless of urgency threshold, so the
-    # dashboard always shows 6 circles (first 6 visible, up to 3 in see-more).
-    # Low-urgency items render green — they're still useful as stock awareness.
-    cur = conn.execute("""
+    # 12 items in a deliberate display order: [red, red, yellow, yellow, yellow,
+    # green, yellow, yellow, yellow, yellow, green, green].
+    # Default-visible first 6 = 2 critical + 3 mid + 1 fine; see-more = next 6.
+    cur = conn.execute(f"""
+        WITH scored AS (
+          SELECT matched_id, matched_category, last_purchase_date,
+                 days_since_last, avg_interval_days, reorder_urgency,
+                 est_stock_remaining, daily_consumption,
+                 CASE
+                   WHEN reorder_urgency >= 0.80 THEN 1
+                   WHEN reorder_urgency >= 0.25 THEN 2
+                   ELSE 3
+                 END AS bucket
+          FROM v_item_stats
+          WHERE is_reliable = 1 AND reorder_urgency IS NOT NULL
+            AND matched_category NOT IN {_DELIVERY_SQL_LIST}
+        ),
+        bucketed AS (
+          SELECT *, ROW_NUMBER() OVER (PARTITION BY bucket ORDER BY reorder_urgency DESC) AS rn
+          FROM scored
+        )
         SELECT matched_id, matched_category, last_purchase_date,
                days_since_last, avg_interval_days, reorder_urgency,
                est_stock_remaining, daily_consumption
-        FROM v_item_stats
-        WHERE is_reliable = 1 AND reorder_urgency IS NOT NULL
-          AND matched_category NOT IN ('Delivery','Courier','Servicio')
-        ORDER BY reorder_urgency DESC
-        LIMIT 9
+        FROM bucketed
+        WHERE (bucket = 1 AND rn <= 2)
+           OR (bucket = 2 AND rn <= 7)
+           OR (bucket = 3 AND rn <= 3)
+        ORDER BY
+          CASE
+            WHEN bucket = 1 THEN rn
+            WHEN bucket = 2 AND rn <= 3 THEN rn + 2
+            WHEN bucket = 3 AND rn = 1  THEN 6
+            WHEN bucket = 2 AND rn > 3  THEN rn + 3
+            ELSE rn + 9
+          END
+        LIMIT 12
     """)
     rows = _rows_as_dicts(cur)
     reliable_count = conn.execute(
@@ -284,13 +309,13 @@ def top_items():
     days = {"30d": 30, "90d": 90, "all": 36500}.get(period, 30)
 
     conn = _db()
-    cur = conn.execute("""
+    cur = conn.execute(f"""
         SELECT matched_id,
                ROUND(SUM(total_price), 2) AS total_spent,
                COUNT(*) AS purchase_count
         FROM purchases
         WHERE raw_name != 'TOTAL' AND matched_id IS NOT NULL
-          AND matched_category NOT IN ('Delivery','Courier','Servicio')
+          AND matched_category NOT IN {_DELIVERY_SQL_LIST}
           AND datetime >= date('now', ? || ' days')
         GROUP BY matched_id
         ORDER BY total_spent DESC LIMIT 10
@@ -326,8 +351,9 @@ def recent_orders():
                COUNT(*) AS item_count,
                MIN(source_file) AS source_file
         FROM purchases
-        WHERE raw_name != 'TOTAL' {date_clause}
+        WHERE raw_name != 'TOTAL' AND total_price > 0 {date_clause}
         GROUP BY datetime, source
+        HAVING order_total > 0
         ORDER BY datetime DESC
         LIMIT 10
     """)

@@ -10,3 +10,5 @@ dist/
 build/
 /personal/
 Screenshot_*.png
+/audit-report-*.html
+/archive/old-docs/archive_entries/

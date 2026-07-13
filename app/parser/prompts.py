@@ -144,23 +144,23 @@ Always use LIKE '%term%' (case-insensitive) rather than exact match, e.g.:
 
 ## COMMON QUERY PATTERNS
 
-### Shopping list / what to buy next
--- days_overdue: how many days past the expected restock date (positive = overdue)
+### Shopping list / what to buy next / running low / about to run out
+-- Prefer v_stock_estimates over v_item_stats for these questions — it already
+-- computes days_of_stock_left correctly. Never hand-compute a "days" figure
+-- from est_stock_remaining or reorder_urgency yourself; those are a quantity
+-- and a ratio, not day counts, and the formatting step is not allowed to
+-- relabel them as days either.
 -- Exclude delivery/service categories — they are not physical items to buy
-SELECT matched_id,
-       ROUND(days_since_last - avg_interval_days, 0) AS days_overdue,
-       ROUND(avg_interval_days, 1) AS typical_interval_days
-FROM v_item_stats
-WHERE is_reliable = 1
-  AND reorder_urgency IS NOT NULL
-  AND LOWER(COALESCE(matched_category,'')) NOT IN ('delivery','courier','servicio')
+SELECT matched_id, days_of_stock_left, ROUND(reorder_urgency, 2) AS reorder_urgency
+FROM v_stock_estimates
+WHERE LOWER(COALESCE(matched_category,'')) NOT IN ('delivery','courier','servicio','service')
 ORDER BY reorder_urgency DESC LIMIT 10;
 
 ### Stock / days until an item runs out
 SELECT matched_id, days_of_stock_left, ROUND(daily_consumption,4) AS daily_consumption
 FROM v_stock_estimates
 WHERE LOWER(matched_id) LIKE '%item%'
-  AND LOWER(COALESCE(matched_category,'')) NOT IN ('delivery','courier','servicio')
+  AND LOWER(COALESCE(matched_category,'')) NOT IN ('delivery','courier','servicio','service')
 ORDER BY days_of_stock_left;
 
 ### Items likely already depleted (negative stock estimate)
@@ -172,7 +172,7 @@ SELECT matched_id,
 FROM v_item_stats
 WHERE is_reliable = 1
   AND est_stock_remaining < 0
-  AND LOWER(COALESCE(matched_category,'')) NOT IN ('delivery','courier','servicio')
+  AND LOWER(COALESCE(matched_category,'')) NOT IN ('delivery','courier','servicio','service')
 ORDER BY est_stock_remaining ASC;
 
 ### Budget projection — will I finish within budget this month?
@@ -231,7 +231,7 @@ SELECT matched_id, ROUND(avg_interval_days,0) AS avg_days_between,
        purchase_count, ROUND(avg_unit_price,2) AS avg_price
 FROM v_item_stats
 WHERE avg_interval_days IS NOT NULL AND purchase_count >= 3
-  AND LOWER(COALESCE(matched_category,'')) NOT IN ('delivery','courier','servicio')
+  AND LOWER(COALESCE(matched_category,'')) NOT IN ('delivery','courier','servicio','service')
 ORDER BY avg_interval_days ASC LIMIT 10;
 
 ### Category health / spend breakdown
@@ -284,7 +284,7 @@ ORDER BY pct_increase DESC LIMIT 8;
 - Always add WHERE raw_name != 'TOTAL' when querying the purchases table directly.
 - Use ROUND(..., 2) for prices. Prefer views over raw table when they cover the question.
 - For questions about spending trends, categories, or item history, prefer the views.
-- For ANY shopping list, running-low, or stock depletion query (including v_needed_soon and v_stock_estimates), always exclude delivery/service items: AND LOWER(COALESCE(matched_category,'')) NOT IN ('delivery','courier','servicio')
+- For ANY shopping list, running-low, or stock depletion query (including v_needed_soon and v_stock_estimates), always exclude delivery/service items: AND LOWER(COALESCE(matched_category,'')) NOT IN ('delivery','courier','servicio','service')
 - Always use LIKE for source name filters (e.g. WHERE LOWER(source) LIKE '%pedidosya%'), never exact match — source names have many variants in the data.
 - Prior assistant turns may end with '-- query: <SQL>'. Use that SQL as context when the current question is a follow-up (e.g. "how does that compare", "which of those", "what about last month") — adapt the prior query rather than starting from scratch.
 - For follow-ups asking for the single most/worst/urgent/expensive/cheapest item from a prior sorted list ("which of those is most urgent", "what's the worst one"), wrap the prior query as a subquery with LIMIT 1: SELECT * FROM (<prior query>) LIMIT 1;
@@ -350,5 +350,5 @@ SQL results ({len(rows)} row(s)):
 - List: max 6 plain lines, format "Item — detail". No header, no preamble
 - Trend or comparison: max 2 sentences
 Exact numbers. Currency S/.XX.XX (2 decimal places). Plain text, no markdown, no asterisks, no bold, no emojis. No SQL explanation.
-Never output raw est_stock_remaining unit quantities or reorder_urgency decimal values — if a result has negative stock or urgency numbers, express depletion as "X days overdue" using days_since_last and avg_interval_days instead.
+Never output raw est_stock_remaining or reorder_urgency values as-is, and never describe either one as a number of "days" — they are a quantity and a ratio, not day counts, regardless of sign. If the row has a days_of_stock_left column, use that number directly and call it "days of stock left". Otherwise, for a negative/overdue result, compute "X days overdue" from days_since_last and avg_interval_days instead.
 {empty_instruction}{chr(10) + extras if extras else ""}"""

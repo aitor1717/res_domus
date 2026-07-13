@@ -168,6 +168,7 @@ def parse_group(
         {"type": "image", "source": {"type": "base64", "media_type": mt, "data": d}}
         for d, mt in (encode_image(img) for img in images)
     ] + [{"type": "text", "text": user_text}]
+    messages = [{"role": "user", "content": content}]
 
     last_err = None
     for attempt in range(1 + retries):
@@ -176,7 +177,7 @@ def parse_group(
                 model=model,
                 max_tokens=4096,
                 system=[{"type": "text", "text": system_prompt, "cache_control": {"type": "ephemeral"}}],
-                messages=[{"role": "user", "content": content}],
+                messages=messages,
             )
             raw = resp.content[0].text.strip()
             if raw.startswith("```"):
@@ -187,8 +188,15 @@ def parse_group(
         except (anthropic.APIError, json.JSONDecodeError) as e:
             last_err = e
             if attempt < retries:
-                wait = 3 * (attempt + 1)
-                time.sleep(wait)
+                if isinstance(e, json.JSONDecodeError):
+                    # Feed the malformed response and the parse error back so Claude
+                    # can self-correct, instead of blindly resending the same request.
+                    messages.append({"role": "assistant", "content": raw})
+                    messages.append({
+                        "role": "user",
+                        "content": f"That wasn't valid JSON ({e}). Return only the corrected JSON array, no other text.",
+                    })
+                time.sleep(3 * (attempt + 1))
     raise last_err
 
 
