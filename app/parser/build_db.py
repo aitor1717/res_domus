@@ -7,6 +7,7 @@ import csv
 import re
 import sqlite3
 from collections import defaultdict
+from datetime import date
 from pathlib import Path
 
 DEDUP_COLS = ("matched_id", "datetime", "quantity", "total_price")
@@ -334,3 +335,33 @@ def run_import(db_path: Path, review_dir: Path) -> dict:
         "files_processed": len(selected),
         "message": f"{total_inserted} rows inserted, {total_dup} duplicates skipped",
     }
+
+
+def rebase_demo_dates(db_path) -> int:
+    """If db_path is flagged as demo data (app_settings.demo_data == '1'), shift every
+    purchases.datetime forward so the most recent purchase lands on today, preserving
+    the spacing between trips. Without this, a demo snapshot generated once looks
+    increasingly stale the longer it sits unregenerated — e.g. Register's default 7-day
+    filter reads as broken, and 'this month' KPIs/budget/stock-estimate views drift out
+    of range. No-op for real data (untagged) and for demo data that's already current.
+    Returns the number of days shifted (0 if none)."""
+    import db_settings
+
+    db_path = str(db_path)
+    if db_settings.get_setting(db_path, "demo_data") != "1":
+        return 0
+
+    conn = sqlite3.connect(db_path)
+    try:
+        row = conn.execute("SELECT MAX(date(datetime)) FROM purchases").fetchone()
+        if not row or not row[0]:
+            return 0
+        latest = date.fromisoformat(row[0])
+        delta = (date.today() - latest).days
+        if delta <= 0:
+            return 0
+        conn.execute("UPDATE purchases SET datetime = date(datetime, ?)", (f"+{delta} days",))
+        conn.commit()
+        return delta
+    finally:
+        conn.close()

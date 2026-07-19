@@ -56,6 +56,33 @@ def create_app():
             "Database has no 'purchases' table — run `python3 scripts/init_db.py` "
             "(or scripts/seed_demo_data.py for sample data) to initialize it."
         )
+    else:
+        # If this is demo data (flagged by seed_demo_data.py), shift its dates forward
+        # to keep the most recent trip current — otherwise a snapshot generated once
+        # drifts stale (empty Register default filter, out-of-range "this month" KPIs).
+        # Runs once at startup, then re-checks daily in the background so a long-lived
+        # process (no restarts) doesn't drift stale either — a no-op every time except
+        # the one day per week or so it's actually needed. rebase_demo_dates() itself
+        # is a no-op for real (untagged) data, so this is always cheap and safe.
+        from parser.build_db import rebase_demo_dates
+        import threading
+        import time
+
+        def _rebase_demo_once():
+            try:
+                shifted = rebase_demo_dates(app.config["DB_PATH"])
+                if shifted:
+                    logging.info(f"Demo data was {shifted} day(s) stale — rebased dates to stay current.")
+            except sqlite3.Error:
+                logging.exception("Failed to rebase demo data dates")
+
+        def _rebase_demo_loop():
+            while True:
+                time.sleep(24 * 60 * 60)
+                _rebase_demo_once()
+
+        _rebase_demo_once()
+        threading.Thread(target=_rebase_demo_loop, daemon=True).start()
 
     # Gate every request behind HTTP Basic Auth (skipped if no credentials configured)
     @app.before_request

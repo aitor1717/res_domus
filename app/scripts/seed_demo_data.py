@@ -21,6 +21,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(BASE_DIR))
 
 from parser.build_db import run_import  # noqa: E402
+from db_settings import set_setting  # noqa: E402
 
 random.seed(42)
 
@@ -154,6 +155,10 @@ def main():
         review_dir = Path(tmp)
         write_review_csvs(trips, review_dir)
         result = run_import(DB_PATH, review_dir)
+
+    # Flags this DB so app.py rebases its dates to stay current on every startup —
+    # otherwise this snapshot's dates are frozen at generation time and drift stale.
+    set_setting(str(DB_PATH), "demo_data", "1")
 
     print(f"Built {DB_PATH.name}: {result['message']} across {result['files_processed']} trips.")
     print("Copy it to res_domus.db to try the demo:")
