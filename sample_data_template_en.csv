@@ -1,90 +1,68 @@
 id,item,category,unit,purchases_per_month,qty_per_purchase,unit_price_usd,store
-1,Potato,Produce,kg,2,2,1.8,Market
-2,Sweet Potato,Produce,kg,1,1,2.2,Market
-3,Onion,Produce,kg,2,1,1.5,Market
-4,Ginger,Produce,u,1,1,0.8,Market
-5,Tomato,Produce,kg,2,0.5,3.2,Market
-6,Carrot,Produce,kg,2,0.5,1.8,Market
-7,Bell Pepper,Produce,u,2,2,1.2,Market
-8,Chili Pepper,Produce,kg,2,0.2,4.5,Market
-9,Lettuce,Produce,u,2,1,2.5,Market
-10,Cucumber,Produce,u,1,2,1,Market
-11,Garlic,Produce,u,2,3,0.8,Market
-12,Lemon,Produce,kg,2,0.5,3,Market
-13,Butternut Squash,Produce,kg,1,0.5,2.8,Market
-14,Celery,Produce,u,1,1,1.8,Market
-15,Mixed Vegetables,Produce,u,2,1,3.5,Market
-17,Green Onion,Produce,g,2,50,0.04,Market
-90,Spinach,Produce,kg,1,0.5,5,Market
-101,Avocado,Produce,g,2,500,0.01,Market
-102,Apple,Produce,kg,2,1,4.5,Market
-103,Banana,Produce,u,4,6,0.3,Market
-18,Whole Chicken,Meat & Seafood,u,3,1,14,Butcher
-19,Ground Beef,Meat & Seafood,kg,3,0.5,11,Butcher
-20,Beef Steak,Meat & Seafood,u,2,2,10,Butcher
-21,Pork Chop,Meat & Seafood,u,2,2,7,Butcher
-22,Chicken Pieces,Meat & Seafood,kg,2,0.5,9,Butcher
-23,Chicken Cutlet,Meat & Seafood,u,3,2,6,Butcher
-24,Burger Patty,Meat & Seafood,u,2,2,5.5,Butcher
-25,Fish Fillet,Meat & Seafood,kg,3,0.5,13,Butcher
-68,Chicken Breast,Meat & Seafood,kg,2,0.5,10,Butcher
-97,Chicken Nuggets,Meat & Seafood,u,2,1,8,Supermarket
-26,Sugar,Pantry,kg,1,1,2.2,Supermarket
-27,Rice,Pantry,kg,1,2,2.5,Supermarket
-28,Milk,Pantry,cartons,2,4,1.8,Supermarket
-29,Eggs,Pantry,u,2,12,0.35,Supermarket
-30,Salt,Pantry,kg,0.5,1,1.2,Supermarket
-31,Chocolate Powder,Pantry,g,1,200,0.04,Supermarket
-32,Butter,Pantry,g,1,250,0.03,Supermarket
-33,Cheese,Pantry,g,2,200,0.04,Supermarket
-34,Deli Ham,Pantry,g,2,200,0.025,Supermarket
-35,Jam,Pantry,g,1,340,0.015,Supermarket
-36,Cooking Oil,Pantry,l,1,1,5,Supermarket
-37,Hot Dogs,Pantry,u,1,6,1.2,Supermarket
-38,Canned Tuna,Pantry,cans,2,3,1.8,Supermarket
-39,Crackers,Pantry,packs,2,1,3.5,Supermarket
-40,Mayonnaise,Pantry,g,1,400,0.012,Supermarket
-41,Spaghetti,Pantry,kg,1,0.5,2.2,Supermarket
-42,Angel Hair Pasta,Pantry,kg,1,0.5,2.2,Supermarket
-43,Instant Oatmeal,Pantry,kg,1,1,4.5,Supermarket
-44,Chamomile Tea,Pantry,u,1,1,3.5,Supermarket
-45,Tea,Pantry,u,1,1,4,Supermarket
-46,Anise Tea,Pantry,u,0.5,1,3,Supermarket
-47,Coffee,Pantry,kg,1,0.25,18,Supermarket
-48,Lentils,Pantry,kg,1,0.5,3.5,Supermarket
-49,Chickpeas,Pantry,kg,0.5,0.5,3.5,Supermarket
-50,Red Kidney Beans,Pantry,kg,1,0.5,3,Supermarket
-51,White Beans,Pantry,kg,0.5,0.5,3,Supermarket
-52,Green Peas,Pantry,kg,1,0.5,4,Supermarket
-53,All-Purpose Flour,Pantry,kg,0.5,1,3,Supermarket
-54,Cornstarch,Pantry,g,0.5,200,0.015,Supermarket
-55,Popcorn Kernels,Pantry,kg,0.5,0.5,3.5,Supermarket
-61,Chili Paste,Pantry,g,1,200,0.02,Supermarket
-62,Minced Garlic,Pantry,g,1,100,0.035,Supermarket
-63,Bay Leaves,Pantry,u,0.5,1,1.5,Supermarket
-66,Cumin,Pantry,g,0.5,50,0.06,Supermarket
-67,Black Pepper,Pantry,g,0.5,50,0.06,Supermarket
-94,Bread,Pantry,u,4,4,0.8,Bakery
-95,Juice,Pantry,l,2,1,4.5,Supermarket
-98,Honey,Pantry,g,0.5,340,0.018,Supermarket
-99,Instant Noodles,Pantry,u,2,3,1.2,Supermarket
-100,Yogurt,Pantry,g,2,500,0.008,Supermarket
-69,Almonds,Pantry,g,0.5,100,0.06,Supermarket
-70,Ice Cream,Pantry,l,1,1,6,Supermarket
-71,Oats,Pantry,kg,1,0.5,3.5,Supermarket
-72,Gelatin,Pantry,packs,1,2,1,Supermarket
-73,Paper Napkins,Household,u,1,1,3,Supermarket
-74,Toilet Paper,Household,rolls,1,6,1.2,Supermarket
-75,Paper Towels,Household,rolls,1,2,3,Supermarket
-76,Laundry Detergent,Household,kg,1,1,7,Supermarket
-77,Bleach,Household,l,1,1,2.5,Supermarket
-78,Color Bleach,Household,l,1.5,1,4,Supermarket
-79,Dish Soap,Household,l,1,0.75,4.5,Supermarket
-80,Liquid Hand Soap,Household,l,1,0.5,5,Supermarket
-81,Degreaser,Household,l,0.5,0.5,5.5,Supermarket
-82,Descaler,Household,l,0.5,0.5,4.5,Supermarket
-83,Glass Cleaner,Household,l,0.5,0.5,3.5,Supermarket
-84,Sponges,Household,u,1,2,1.5,Supermarket
-85,Cleaning Cloths,Household,u,1,2,2.5,Supermarket
-96,Disposable Razor,Household,u,0.5,1,8,Supermarket
-91,Delivery,Service,s,8,1,7.5,Groceries app
+1,Banana,Produce,u,4,6,0.35,Trader Joe's
+2,Apple,Produce,kg,2,1,3.5,Trader Joe's
+3,Orange,Produce,kg,1.5,1,3.2,Key Food
+4,Strawberries,Produce,u,2,1,4.5,Trader Joe's
+5,Avocado,Produce,u,3,4,1.5,Trader Joe's
+6,Lemon,Produce,u,1,4,0.6,Key Food
+7,Tomato,Produce,kg,2,0.7,3.8,Key Food
+8,Onion,Produce,kg,2,1,2.2,Key Food
+9,Potato,Produce,kg,2,2,2.5,Key Food
+10,Carrot,Produce,kg,1.5,0.7,2,Key Food
+11,Broccoli,Produce,u,2,1,2.8,Whole Foods Market
+12,Bell Pepper,Produce,u,2,2,1.5,Key Food
+13,Garlic,Produce,u,1,2,1,Key Food
+14,Salad Mix,Produce,u,3,1,4.5,Trader Joe's
+15,Cucumber,Produce,u,1.5,2,1.2,Key Food
+16,Spinach,Produce,u,1.5,1,3.5,Trader Joe's
+17,Chicken Breast,Meat & Seafood,kg,3,1,9,Key Food
+18,Ground Beef,Meat & Seafood,kg,2.5,0.7,11,Western Beef
+19,Chicken Thighs,Meat & Seafood,kg,1.5,1,6.5,Key Food
+20,Bacon,Meat & Seafood,u,2,1,6.5,Whole Foods Market
+21,Salmon Fillet,Meat & Seafood,kg,1.5,0.5,22,Whole Foods Market
+22,Shrimp,Meat & Seafood,kg,1,0.4,18,Whole Foods Market
+23,Deli Turkey,Meat & Seafood,g,2,250,0.03,Key Food
+24,Ground Turkey,Meat & Seafood,kg,1,0.6,8.5,Key Food
+25,Milk,Pantry,u,3,1,4.5,Key Food
+26,Eggs,Pantry,u,2,12,0.35,Key Food
+27,Butter,Pantry,g,1,227,0.02,Key Food
+28,Shredded Cheese,Pantry,g,2,226,0.02,Key Food
+29,Greek Yogurt,Pantry,g,2.5,500,0.01,Trader Joe's
+30,Cream Cheese,Pantry,g,1,227,0.015,Key Food
+31,Bread,Pantry,u,3,1,4.5,Key Food
+32,Bagels,Pantry,u,1.5,1,5,Trader Joe's
+33,Cereal,Pantry,u,2,1,5.5,Key Food
+34,Oatmeal,Pantry,kg,0.8,0.5,4.5,Trader Joe's
+35,Coffee,Pantry,kg,1,0.34,16,Trader Joe's
+36,Orange Juice,Pantry,u,1.5,1,5,Key Food
+37,Sparkling Water,Pantry,u,2,1,6,Trader Joe's
+38,Soda,Pantry,u,1,1,6.5,Key Food
+39,Pasta,Pantry,kg,1.5,0.45,2.2,Key Food
+40,Marinara Sauce,Pantry,u,1.5,1,4.5,Trader Joe's
+41,Olive Oil,Pantry,u,0.6,1,9,Trader Joe's
+42,Ketchup,Pantry,u,0.5,1,3.8,Key Food
+43,Mayonnaise,Pantry,g,0.5,400,0.012,Key Food
+44,Peanut Butter,Pantry,g,1,454,0.012,Trader Joe's
+45,Jam,Pantry,g,0.5,340,0.015,Key Food
+46,Rice,Pantry,kg,1,2,2.8,Key Food
+47,Black Beans,Pantry,cans,1.5,2,1.3,Trader Joe's
+48,Canned Tomatoes,Pantry,cans,1,2,2,Key Food
+49,Tortilla Chips,Pantry,u,1.5,1,4,Trader Joe's
+50,Salsa,Pantry,u,1,1,4,Trader Joe's
+51,Crackers,Pantry,packs,1,1,4.5,Key Food
+52,Granola Bars,Pantry,u,2,1,5.5,Trader Joe's
+53,Cookies,Pantry,u,1.5,1,4.5,Key Food
+54,Frozen Pizza,Pantry,u,2,1,6.5,Trader Joe's
+55,Frozen Vegetables,Pantry,u,1.5,1,3.5,Trader Joe's
+56,Ice Cream,Pantry,u,1,1,6.5,Trader Joe's
+57,Paper Towels,Household,rolls,1,6,1.8,Costco Wholesale
+58,Toilet Paper,Household,rolls,0.8,12,0.85,Costco Wholesale
+59,Trash Bags,Household,u,0.6,1,9,Duane Reade
+60,Dish Soap,Household,u,0.7,1,4.5,Duane Reade
+61,Laundry Detergent,Household,u,0.6,1,13,Costco Wholesale
+62,Dishwasher Pods,Household,u,0.5,1,10,Duane Reade
+63,Aluminum Foil,Household,u,0.3,1,5,Duane Reade
+64,Hand Soap,Household,u,0.6,1,4.5,Duane Reade
+65,Diapers,Household,u,2,1,28,Duane Reade
+66,Baby Wipes,Household,u,1.5,1,6.5,Duane Reade
+67,Delivery,Service,s,6,1,8,FreshDirect

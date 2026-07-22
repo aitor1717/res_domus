@@ -153,7 +153,7 @@ def _balance_after_write(conn: sqlite3.Connection, rng: random.Random) -> None:
     # Targets for positions 0-11 in the final display
     TARGETS = [1.12, 1.08, 0.80, 0.72, 0.64, 0.56, 0.48, 0.42, 0.38, 0.15, 0.15, 0.15]
     CATCHUP = 0.15   # urgency target for all remaining overdue items (rank 13+)
-    SKIP_CATS = "('Delivery', 'Courier', 'Servicio', 'Service')"
+    SKIP_CATS = "('Service')"
 
     all_overdue = conn.execute(f"""
         SELECT matched_id, reorder_urgency, avg_interval_days
@@ -211,7 +211,7 @@ def _shape_demo(conn: sqlite3.Connection, rng: random.Random) -> None:
        a tight July goal and has already exceeded it.
     """
     today = date.today()
-    SKIP_CATS = "('Delivery', 'Courier', 'Servicio', 'Service')"
+    SKIP_CATS = "('Service')"
     col_names = [r[1] for r in conn.execute("PRAGMA table_info(purchases)").fetchall()]
 
     # Pull a pool of reliable items with their typical price/qty.

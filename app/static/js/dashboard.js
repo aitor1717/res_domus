@@ -249,7 +249,7 @@ function makeCircle(item, i) {
   div.innerHTML = `
     <div class="ni-circ" style="box-shadow:0 0 14px ${color}4d">
       <svg viewBox="0 0 36 36">
-        <circle cx="18" cy="18" r="15.915" fill="none" stroke="rgba(58,77,97,.9)" stroke-width="2.5"/>
+        <circle cx="18" cy="18" r="15.915" fill="none" stroke="rgba(255,157,110,.14)" stroke-width="2.5"/>
         <circle cx="18" cy="18" r="15.915" fill="none" stroke="${color}" stroke-width="2.5"
           stroke-linecap="round" data-pct="${pct}"
           transform="rotate(-90 18 18)" class="ni-arc"/>

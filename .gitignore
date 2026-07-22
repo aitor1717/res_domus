@@ -12,3 +12,5 @@ build/
 Screenshot_*.png
 /audit-report-*.html
 /archive/old-docs/archive_entries/
+/archive/
+/CLAUDE.md

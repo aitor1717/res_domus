@@ -6,10 +6,6 @@ live dashboard of spending trends, inventory estimates, price history, and
 price-anomaly alerts — plus a natural-language chat assistant for querying
 your own data.
 
-![dashboard screenshot](docs/screenshots/dashboard.jpg)
-
-Live showcase: [docs/index.html](docs/index.html) (GitHub Pages) · [audit report (8.5/10)](docs/audit-1-report.html)
-
 ## Features
 
 - **Receipt parsing** — upload photos, Claude Sonnet extracts items, prices,
@@ -137,10 +133,7 @@ app/               Flask app
 data/              Gitignored runtime data: res_domus.db, input/, review/,
                    archive/, output/
 docs/              GitHub Pages showcase (not part of the running app)
-archive/           Superseded code/designs kept for reference
 ```
-
-See [CLAUDE.md](CLAUDE.md) for full architecture notes.
 
 ## Advanced: deploying to a server
 
