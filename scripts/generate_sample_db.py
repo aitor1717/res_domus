@@ -264,17 +264,21 @@ def _shape_demo(conn: sqlite3.Connection, rng: random.Random) -> None:
 
     if pool:
         items = list(pool)
-        # Regular shops through the 30d window (adds density/realism)
-        _add_trip(today - timedelta(days=28),  55, items)  # June 12
-        _add_trip(today - timedelta(days=21),  65, items)  # June 19
-        # Spike: two big shops on June 23 and June 25 (W25, visible bump before last two entries)
-        _add_trip(today - timedelta(days=17), 110, items)  # June 23
-        _add_trip(today - timedelta(days=15), 100, items)  # June 25
-        _add_trip(today - timedelta(days=14),  60, items)  # June 26
-        # Filler: bring W26 (June 29–July 5) and W27 (July 6–today) to realistic levels
-        _add_trip(today - timedelta(days=9),   80, items)  # July 1
-        _add_trip(today - timedelta(days=6),   50, items)  # July 4
-        _add_trip(today - timedelta(days=3),   70, items)  # July 7
+        # Regular shops through the 30d window (adds density/realism). Total
+        # injected spend is capped as a fraction of the household's own
+        # 18-month baseline (read fresh, pre-injection) rather than a fixed
+        # dollar figure, so the resulting last-30d-vs-baseline deviation lands
+        # in a realistic single-digit/low-teens range regardless of household
+        # size — a fixed dollar spike would read as a modest bump for a large
+        # household and a wild, implausible spike for a small one.
+        baseline_row = conn.execute("SELECT avg_baseline FROM v_budget").fetchone()
+        baseline = (baseline_row[0] if baseline_row and baseline_row[0] else 600.0)
+        SPIKE_FRACTION = 0.12
+        weights = [0.093, 0.110, 0.186, 0.169, 0.102, 0.136, 0.085, 0.119]
+        offsets = [28, 21, 17, 15, 14, 9, 6, 3]
+        spike_total = baseline * SPIKE_FRACTION
+        for days_ago, w in zip(offsets, weights):
+            _add_trip(today - timedelta(days=days_ago), round(spike_total * w, 2), items)
         conn.commit()
         conn.executescript(VIEWS)
 
@@ -327,6 +331,58 @@ def _shape_demo(conn: sqlite3.Connection, rng: random.Random) -> None:
         conn.executescript(VIEWS)
 
 
+def _normalize_recent_deviation(conn: sqlite3.Connection, rng: random.Random) -> None:
+    """
+    The stochastic generation (INFLATION compounding + SEASONAL multiplier,
+    both strongest near the end of the generated window) structurally biases
+    the last 30 days above the multi-month average baseline, regardless of
+    household size - left alone this reads as "100%+ over budget" instead of
+    a believable "this period ran a bit under/over average." Scale every
+    last-30-day purchase by a single factor so the actual (last_30d -
+    avg_baseline) / avg_baseline deviation lands at a randomly chosen but
+    believable target instead of whatever the stochastic model produced -
+    same "engineer the outcome directly" approach already used above for the
+    budget ring percentage and the toilet-paper stock level. Preserves the
+    day-to-day shape of spending, only normalizes the total.
+    """
+    today = date.today()
+    row = conn.execute("SELECT avg_baseline FROM v_budget").fetchone()
+    baseline = row[0] if row and row[0] else None
+    if not baseline:
+        return
+    last30 = conn.execute(
+        "SELECT SUM(total_price) FROM purchases WHERE raw_name != 'TOTAL' "
+        "AND datetime >= date('now', '-30 days')"
+    ).fetchone()[0] or 0
+    if last30 <= 0:
+        return
+
+    target_dev = rng.uniform(-5, 9)
+    target_last30 = baseline * (1 + target_dev / 100)
+    factor = target_last30 / last30
+
+    conn.execute(
+        "UPDATE purchases SET "
+        "total_price = ROUND(unit_price * ? * quantity, 2), "
+        "unit_price   = ROUND(unit_price * ?, 4) "
+        "WHERE raw_name != 'TOTAL' AND datetime >= date('now', '-30 days') AND quantity > 0",
+        (factor, factor),
+    )
+    conn.commit()
+    conn.executescript(VIEWS)
+
+    # Re-anchor the budget ring to ~74% now that spent_this_month shifted.
+    row = conn.execute("SELECT spent_this_month FROM v_budget").fetchone()
+    if row and row[0]:
+        manual_budget = round(row[0] / 0.74, 2)
+        cur_month = today.strftime("%Y-%m")
+        conn.execute("DELETE FROM budget WHERE month = ?", (cur_month,))
+        conn.execute("INSERT INTO budget (month, manual_budget) VALUES (?, ?)",
+                     (cur_month, manual_budget))
+        conn.commit()
+        conn.executescript(VIEWS)
+
+
 def write_db(db_path: Path, rows: list[dict], rng: random.Random | None = None) -> None:
     db_path.parent.mkdir(parents=True, exist_ok=True)
     db_path.unlink(missing_ok=True)  # always start fresh
@@ -339,6 +395,7 @@ def write_db(db_path: Path, rows: list[dict], rng: random.Random | None = None) 
     _rng = rng or random.Random(99)
     _balance_after_write(conn, _rng)
     _shape_demo(conn, _rng)
+    _normalize_recent_deviation(conn, _rng)
     conn.close()
 
 

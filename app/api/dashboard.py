@@ -32,6 +32,15 @@ def _totals(conn: sqlite3.Connection, clause: str) -> tuple[float, int]:
     return row[0] or 0, row[1] or 0
 
 
+def _tracked_count(conn: sqlite3.Connection, clause: str) -> int:
+    """Distinct items purchased at least once within the given period clause."""
+    row = conn.execute(f"""
+        SELECT COUNT(DISTINCT matched_id) FROM purchases
+        WHERE matched_id IS NOT NULL {clause}
+    """).fetchone()
+    return row[0] or 0
+
+
 @bp.get("/kpis")
 def kpis():
     from flask import request as _req
@@ -50,25 +59,19 @@ def kpis():
         )
         cur_total,  cur_orders  = _totals(conn, ytd_clause)
         prev_total, prev_orders = _totals(conn, pytd_clause)
+        cur_tracked  = _tracked_count(conn, ytd_clause)
+        prev_tracked = _tracked_count(conn, pytd_clause)
     else:
         _days = {"30d": 30, "90d": 90}.get(period, 30)
         date_clause = f"AND datetime >= date('now', '-{_days} days')"
         prev_clause = f"AND datetime >= date('now', '-{_days * 2} days') AND datetime < date('now', '-{_days} days')"
         cur_total,  cur_orders  = _totals(conn, date_clause)
         prev_total, prev_orders = _totals(conn, prev_clause)
+        cur_tracked  = _tracked_count(conn, date_clause)
+        prev_tracked = _tracked_count(conn, prev_clause)
 
     avg_order = round(cur_total / cur_orders, 2) if cur_orders else 0
     prev_avg  = round(prev_total / prev_orders, 2) if prev_orders else 0
-
-    # Tracked items + category breakdown
-    tracked = conn.execute(
-        "SELECT COUNT(DISTINCT matched_id) FROM purchases WHERE matched_id IS NOT NULL"
-    ).fetchone()[0]
-    category_count = conn.execute(
-        "SELECT COUNT(DISTINCT matched_category) FROM purchases "
-        f"WHERE matched_id IS NOT NULL AND matched_category IS NOT NULL "
-        f"AND matched_category NOT IN {_DELIVERY_SQL_LIST}"
-    ).fetchone()[0]
 
     conn.close()
 
@@ -84,8 +87,8 @@ def kpis():
         "orders_delta":   cur_orders - prev_orders,
         "avg_order":      avg_order,
         "avg_order_delta": delta_pct(avg_order, prev_avg),
-        "tracked_items":  tracked,
-        "category_count": category_count,
+        "tracked_items":  cur_tracked,
+        "tracked_items_delta": delta_pct(cur_tracked, prev_tracked),
     })
 
 
@@ -162,23 +165,30 @@ def chart():
 
     # Each view targets ~15 points with bucket size proportional to the period,
     # so 30d→90d→all feel like coherent zoom-out levels of the same data.
+    # 30d and 90d share the same bucket width (2.5 days) rather than each
+    # independently targeting ~15 points - that made zooming out compress
+    # more time into the same point count, which reads as inconsistent
+    # ("resolution" silently changing). With a fixed bucket width, point
+    # count scales with the time range instead: 30d → 12 points, 90d → 36
+    # (3x, matching the 3x longer window).
+    BUCKET_DAYS = 2.5
     if period == "30d":
-        # 2-day buckets → ~15 points
         rows = conn.execute(f"""
-            SELECT CAST(julianday(datetime) / 2 AS INTEGER) AS bucket,
+            SELECT CAST(julianday(datetime) / {BUCKET_DAYS} AS INTEGER) AS bucket,
                    MIN(datetime) AS min_date, {SUMS}
             {BASE} AND datetime >= date('now', '-30 days')
             GROUP BY bucket ORDER BY bucket
         """).fetchall()
+        current_bucket = conn.execute(f"SELECT CAST(julianday('now') / {BUCKET_DAYS} AS INTEGER)").fetchone()[0]
         rows = [(r[0], fmt_label_weekly(r[1]), r[2], r[3], r[4], r[5]) for r in rows]
     elif period == "90d":
-        # 6-day buckets → ~15 points
         rows = conn.execute(f"""
-            SELECT CAST(julianday(datetime) / 6 AS INTEGER) AS bucket,
+            SELECT CAST(julianday(datetime) / {BUCKET_DAYS} AS INTEGER) AS bucket,
                    MIN(datetime) AS min_date, {SUMS}
             {BASE} AND datetime >= date('now', '-90 days')
             GROUP BY bucket ORDER BY bucket
         """).fetchall()
+        current_bucket = conn.execute(f"SELECT CAST(julianday('now') / {BUCKET_DAYS} AS INTEGER)").fetchone()[0]
         rows = [(r[0], fmt_label_weekly(r[1]), r[2], r[3], r[4], r[5]) for r in rows]
     else:  # all — monthly buckets → ~14 points
         rows = conn.execute(f"""
@@ -187,7 +197,17 @@ def chart():
             {BASE}
             GROUP BY bucket ORDER BY bucket
         """).fetchall()
+        current_bucket = conn.execute("SELECT strftime('%Y-%m', 'now')").fetchone()[0]
         rows = [(r[0], fmt_label_all(r[1]), r[2], r[3], r[4], r[5]) for r in rows]
+
+    # Drop a trailing bucket that's still in progress (spans days that haven't
+    # happened yet) - otherwise the most recent point on the chart reads as a
+    # sudden drop-off in spending when it's really just an incomplete window,
+    # which looks like corrupted/inconsistent data right where users look
+    # first. Only ever drops the LAST bucket, and only if more than one
+    # bucket exists (never returns an empty chart).
+    if len(rows) > 1 and rows[-1][0] == current_bucket:
+        rows = rows[:-1]
 
     # Anomaly: most recent anomalous month — match against min_date of each bucket
     anomaly_row = conn.execute("""

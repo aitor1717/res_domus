@@ -157,7 +157,7 @@
       </div>
     </div>
     <div class="tb-line2">
-      <a class="wordmark" href="/" style="text-decoration:none"><span class="top-tag">{{ instance_label }}</span></a>
+      <a class="wordmark" href="/" style="text-decoration:none"><span class="top-tag">{{ 'domus_01 - demo' if demo_mode else instance_label }}</span></a>
     </div>
     {% block topbar_extra %}{% endblock %}
   </header>
@@ -190,7 +190,8 @@ function setLang(l) {
     document.querySelectorAll('.i18n').forEach(el => { if (el.dataset[l]) el.textContent = el.dataset[l]; });
   });
 })();
-if (!location.pathname.startsWith('/settings')) {
+var DEMO_MODE = {{ 'true' if demo_mode else 'false' }};
+if (!DEMO_MODE && !location.pathname.startsWith('/settings')) {
   fetch('/api/settings/api-key').then(function(r) { return r.json(); }).then(function(d) {
     if (!d.configured) {
       var el = document.getElementById('aiBanner');

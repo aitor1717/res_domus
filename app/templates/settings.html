@@ -34,6 +34,21 @@
     cursor: pointer; transition: background .15s; margin-top: 4px;
   }
   .import-btn:hover { background: rgba(255,157,110,.15); }
+  .setting-input:disabled, .save-btn:disabled, .import-btn:disabled {
+    opacity: .45; cursor: not-allowed;
+  }
+  .setting-input:disabled:hover, .save-btn:disabled:hover { background: inherit; }
+
+  /* Import/Export share one box, buttons styled identically */
+  .db-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 4px; }
+  .db-actions .import-btn, .db-actions .save-btn { flex: 1; min-width: 140px; width: auto; margin-top: 0; text-align: center; }
+
+  .attrib-box {
+    font-family: var(--mono); font-size: 10px; color: var(--dim2); text-align: center;
+    line-height: 1.8;
+  }
+  .attrib-box a { color: var(--orange); text-decoration: none; }
+  .attrib-box a:hover { text-decoration: underline; }
 </style>
 {% endblock %}
 
@@ -44,15 +59,15 @@
   <div class="card mb">
     <div class="card-label i18n" data-en="AI MANAGER" data-es="GESTOR IA">GESTOR IA</div>
     <div class="setting-row">
-      <div class="setting-label i18n" data-en="Anthropic API key" data-es="Clave API de Anthropic">Clave API de Anthropic</div>
-      <input class="setting-input" id="apiKeyInput" type="password" placeholder="sk-ant-...">
+      <div class="setting-label i18n" data-en="AI API key" data-es="Clave API de IA">Clave API de IA</div>
+      <input class="setting-input" id="apiKeyInput" type="password" placeholder="••••••••••">
       <button class="save-btn i18n" data-en="save" data-es="guardar" onclick="saveApiKey()">guardar</button>
     </div>
     <div class="status-msg" id="apiKeyStatus"></div>
-    <div class="i18n" style="font-family:var(--mono);font-size:9px;color:var(--dim2);margin-top:8px"
-         data-en="Enables receipt upload parsing and the chat manager. Get a key at console.anthropic.com — stored locally in your database, never shared. Leave blank and save to disable."
-         data-es="Activa el análisis de recibos y el chat manager. Obtén una clave en console.anthropic.com — se guarda localmente en tu base de datos, nunca se comparte. Déjalo vacío y guarda para desactivarlo.">
-      Activa el análisis de recibos y el chat manager. Obtén una clave en console.anthropic.com — se guarda localmente en tu base de datos, nunca se comparte. Déjalo vacío y guarda para desactivarlo.
+    <div class="i18n" id="apiKeyHelp" style="font-family:var(--mono);font-size:9px;color:var(--dim2);margin-top:8px"
+         data-en="Enables receipt parsing and chat. Stored locally, never shared."
+         data-es="Activa el análisis de recibos y el chat. Se guarda localmente, nunca se comparte.">
+      Activa el análisis de recibos y el chat. Se guarda localmente, nunca se comparte.
     </div>
   </div>
 
@@ -62,7 +77,7 @@
     <div class="setting-row">
       <div class="setting-label i18n" data-en="Spending limit ($)" data-es="Límite de gasto (S/.)">Límite de gasto (S/.)</div>
       <input class="setting-input" id="budgetInput" type="number" min="0" step="10" placeholder="—">
-      <button class="save-btn i18n" data-en="save" data-es="guardar" onclick="saveBudget()">guardar</button>
+      <button class="save-btn i18n" id="budgetSaveBtn" data-en="save" data-es="guardar" onclick="saveBudget()">guardar</button>
     </div>
     <div class="status-msg" id="budgetStatus"></div>
     <div class="i18n" style="font-family:var(--mono);font-size:9px;color:var(--dim2);margin-top:8px"
@@ -72,24 +87,22 @@
     </div>
   </div>
 
-  <!-- DB tools -->
+  <!-- DB tools: import + export share one box -->
   <div class="card mb">
     <div class="card-label i18n" data-en="DATABASE" data-es="BASE DE DATOS">BASE DE DATOS</div>
-    <div class="setting-row">
-      <div class="setting-label i18n" data-en="Re-import CSVs from review/" data-es="Reimportar CSVs de review/">Reimportar CSVs de review/</div>
-      <button class="import-btn i18n" data-en="reimport now" data-es="reimportar ahora" onclick="runImport()">reimportar ahora</button>
+    <div class="db-actions">
+      <button class="import-btn i18n" id="importBtn" data-en="reimport now" data-es="reimportar ahora" onclick="runImport()">reimportar ahora</button>
+      <a class="save-btn i18n" id="exportBtn" data-en="export xlsx" data-es="exportar xlsx" href="/api/settings/export" download style="text-decoration:none;display:inline-block">exportar xlsx</a>
     </div>
     <div class="status-msg" id="importStatus"></div>
   </div>
 
-  <!-- Export -->
-  <div class="card mb">
-    <div class="card-label i18n" data-en="EXPORT" data-es="EXPORTAR">EXPORTAR</div>
-    <div class="setting-row">
-      <div class="setting-label i18n" data-en="Download all purchases as Excel" data-es="Descargar compras como Excel">Descargar compras como Excel</div>
-      <a class="save-btn i18n" id="exportBtn" data-en="export xlsx" data-es="exportar xlsx" href="/api/settings/export" download style="text-decoration:none;display:inline-block">exportar xlsx</a>
-    </div>
+  {% if demo_mode %}
+  <div class="card mb attrib-box" id="attribBox">
+    Aitor Bazo · {{ current_year }}<br>
+    Portfolio · <a href="https://github.com/aitor1717" target="_blank" rel="noopener">GitHub</a> · <a href="https://www.linkedin.com/in/aitorbazo" target="_blank" rel="noopener">LinkedIn</a>
   </div>
+  {% endif %}
 
 </div>
 {% endblock %}
@@ -104,6 +117,7 @@
       configuredEnv: '✓ configured via environment — AI features enabled',
       notConfigured: 'not configured — AI features disabled',
       cleared: 'cleared — AI features disabled',
+      demoWarn: 'Read-only demo: writes are disabled.',
     },
     es: {
       saved: 'guardado', saveErr: 'error al guardar', importing: 'importando…',
@@ -111,6 +125,7 @@
       configuredEnv: '✓ configurada vía entorno — funciones IA activas',
       notConfigured: 'no configurada — funciones IA desactivadas',
       cleared: 'eliminada — funciones IA desactivadas',
+      demoWarn: 'Demo de solo lectura: la escritura está deshabilitada.',
     },
   };
   function st(k) { return (ST[lang] || ST.en)[k]; }
@@ -124,7 +139,15 @@
     checkApiKeyStatus();
   };
 
+  function demoBlock(el) {
+    el.className = 'status-msg err';
+    el.textContent = st('demoWarn');
+    return true;
+  }
+
   async function saveBudget() {
+    const el = document.getElementById('budgetStatus');
+    if (typeof DEMO_MODE !== 'undefined' && DEMO_MODE) { demoBlock(el); return; }
     const val = document.getElementById('budgetInput').value;
     const month = new Date().toISOString().slice(0, 7);
     const res = await fetch('/api/settings/budget', {
@@ -132,13 +155,13 @@
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({ month, manual_budget: val ? parseFloat(val) : null }),
     });
-    const el = document.getElementById('budgetStatus');
     el.className = 'status-msg ' + (res.ok ? 'ok' : 'err');
     el.textContent = res.ok ? st('saved') : st('saveErr');
   }
 
   async function runImport() {
     const el = document.getElementById('importStatus');
+    if (typeof DEMO_MODE !== 'undefined' && DEMO_MODE) { demoBlock(el); return; }
     el.className = 'status-msg'; el.textContent = st('importing');
     const res = await fetch('/api/settings/reimport', { method: 'POST' });
     const data = await res.json();
@@ -147,6 +170,8 @@
   }
 
   async function saveApiKey() {
+    const el = document.getElementById('apiKeyStatus');
+    if (typeof DEMO_MODE !== 'undefined' && DEMO_MODE) { demoBlock(el); return; }
     const val = document.getElementById('apiKeyInput').value.trim();
     const res = await fetch('/api/settings/api-key', {
       method: 'POST',
@@ -154,15 +179,18 @@
       body: JSON.stringify({ api_key: val }),
     });
     document.getElementById('apiKeyInput').value = '';
-    const el = document.getElementById('apiKeyStatus');
     if (!res.ok) { el.className = 'status-msg err'; el.textContent = st('saveErr'); return; }
     await checkApiKeyStatus();
   }
 
   async function checkApiKeyStatus() {
+    const el = document.getElementById('apiKeyStatus');
+    // Demo mode: field looks like any other field until someone tries to
+    // actually save (see demoBlock(), called from saveApiKey()) - no
+    // disabled/greyed-out affordance up front.
+    if (typeof DEMO_MODE !== 'undefined' && DEMO_MODE) return;
     const res = await fetch('/api/settings/api-key');
     const data = await res.json();
-    const el = document.getElementById('apiKeyStatus');
     if (data.configured) {
       el.className = 'status-msg ok';
       el.textContent = data.source === 'env' ? st('configuredEnv') : st('configured');

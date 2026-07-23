@@ -40,6 +40,11 @@ SECRET_KEY     = os.environ.get("SECRET_KEY", "change-me-in-production")
 DEBUG          = os.environ.get("FLASK_DEBUG", "0") == "1"
 INSTANCE_LABEL = os.environ.get("INSTANCE_LABEL", "res domus")
 
+# Read-only public showcase mode: blocks every write endpoint (items, register,
+# settings, chat purchase-logging) and swaps the chat assistant for a static
+# response instead of real AI calls. Leave "0" for normal (personal) use.
+DEMO_MODE = os.environ.get("DEMO_MODE", "0") == "1"
+
 
 def ensure_dirs():
     for d in (UPLOAD_DIR, REVIEW_DIR, ARCHIVE_DIR, OUTPUT_DIR):

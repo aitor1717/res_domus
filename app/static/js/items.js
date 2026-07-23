@@ -14,6 +14,7 @@ const IT = {
     deleteConfirm: 'Delete this item from the library?',
     saveError: 'Error saving item',
     searchPlaceholder: 'search item, category, synonym…',
+    demoBlocked: 'Editing isn\'t available in demo mode.',
   },
   es: {
     noResults: 'sin resultados',
@@ -24,6 +25,7 @@ const IT = {
     deleteConfirm: '¿Eliminar este item de la biblioteca?',
     saveError: 'Error al guardar',
     searchPlaceholder: 'buscar item, categoría, sinónimo…',
+    demoBlocked: 'La edición no está disponible en modo demo.',
   },
 };
 
@@ -37,6 +39,10 @@ window.setLang = function(l) {
   document.querySelectorAll('.i18n').forEach(el => { if (el.dataset[l]) el.textContent = el.dataset[l]; });
   const si = document.getElementById('searchInput');
   if (si) si.placeholder = t('searchPlaceholder');
+  // Re-render already-loaded rows so dynamic text (edit button, empty state)
+  // picks up the new language immediately instead of staying stale until
+  // the next fetch.
+  renderItems(allItems);
 };
 
 /* ── LOAD ── */
@@ -107,6 +113,7 @@ async function saveItem() {
     tags:        document.getElementById('fTags').value.trim(),
   };
   if (!payload.item) { document.getElementById('fItem').focus(); return; }
+  if (typeof DEMO_MODE !== 'undefined' && DEMO_MODE) { alert(t('demoBlocked')); return; }
 
   const url = id ? `/api/items/${id}` : '/api/items';
   const method = id ? 'PATCH' : 'POST';
@@ -124,6 +131,7 @@ async function saveItem() {
 }
 
 async function deleteItem(id) {
+  if (typeof DEMO_MODE !== 'undefined' && DEMO_MODE) { alert(t('demoBlocked')); return; }
   if (!confirm(t('deleteConfirm'))) return;
   await fetch(`/api/items/${id}`, { method: 'DELETE' });
   loadItems(document.getElementById('searchInput').value);

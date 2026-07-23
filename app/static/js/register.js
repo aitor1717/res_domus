@@ -10,10 +10,12 @@ let allEntries = [];
 const RT = {
   en: { noResults: 'no entries in this range', loading: 'loading…', total: 'total',
         entries: 'entries', searchPlaceholder: 'search item, category…',
-        edit: 'edit', editTitle: 'edit entry', deleteConfirm: 'Delete this entry?', saveError: 'Error saving entry' },
+        edit: 'edit', editTitle: 'edit entry', deleteConfirm: 'Delete this entry?', saveError: 'Error saving entry',
+        demoBlocked: 'Editing isn\'t available in demo mode.' },
   es: { noResults: 'sin entradas en este rango', loading: 'cargando…', total: 'total',
         entries: 'entradas', searchPlaceholder: 'buscar item, categoría…',
-        edit: 'editar', editTitle: 'editar entrada', deleteConfirm: '¿Eliminar esta entrada?', saveError: 'Error al guardar' },
+        edit: 'editar', editTitle: 'editar entrada', deleteConfirm: '¿Eliminar esta entrada?', saveError: 'Error al guardar',
+        demoBlocked: 'La edición no está disponible en modo demo.' },
 };
 function t(key) { return (RT[lang] || RT.en)[key] || key; }
 
@@ -25,6 +27,10 @@ window.setLang = function(l) {
   document.querySelectorAll('.i18n').forEach(el => { if (el.dataset[l]) el.textContent = el.dataset[l]; });
   const si = document.getElementById('searchInput');
   if (si) si.placeholder = t('searchPlaceholder');
+  // Re-render already-loaded rows so dynamic text (summary line, buttons,
+  // empty state) picks up the new language immediately instead of staying
+  // stale until the next fetch.
+  renderEntries(allEntries);
 };
 
 function isoLocal(d) {
@@ -127,6 +133,7 @@ async function saveEntry() {
     source:           document.getElementById('fSource').value.trim() || null,
   };
   if (!payload.raw_name) { document.getElementById('fRawName').focus(); return; }
+  if (typeof DEMO_MODE !== 'undefined' && DEMO_MODE) { alert(t('demoBlocked')); return; }
 
   const res = await fetch(`/api/register/entries/${id}`, {
     method: 'PATCH',
@@ -142,6 +149,7 @@ async function saveEntry() {
 }
 
 async function deleteEntry(id) {
+  if (typeof DEMO_MODE !== 'undefined' && DEMO_MODE) { alert(t('demoBlocked')); return; }
   if (!confirm(t('deleteConfirm'))) return;
   await fetch(`/api/register/entries/${id}`, { method: 'DELETE' });
   loadEntries(document.getElementById('searchInput').value);

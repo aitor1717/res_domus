@@ -3,7 +3,7 @@ import logging
 import sqlite3
 from pathlib import Path
 
-from flask import Flask, render_template, request, Response, send_from_directory
+from flask import Flask, render_template, request, Response, send_from_directory, jsonify
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
@@ -20,13 +20,20 @@ def create_app():
 
     cfg.ensure_dirs()
 
+    demo_mode = getattr(cfg, "DEMO_MODE", False)
+    # The items library reads/writes AUX_CSV live (api/items.py), independent
+    # of which language the purchases themselves were generated in - without
+    # this, an English demo would still show the Spanish canonical item
+    # library (categories, synonyms, units) on the Items page.
+    aux_csv = (cfg.BASE_DIR / "aux_items_en.csv") if demo_mode else cfg.AUX_CSV
+
     app.config.update(
         SECRET_KEY=cfg.SECRET_KEY,
         ANTHROPIC_API_KEY=cfg.ANTHROPIC_API_KEY,
         MODEL_PARSER=getattr(cfg, "MODEL_PARSER", "claude-sonnet-4-6"),
         MODEL_CHAT=getattr(cfg, "MODEL_CHAT", "claude-haiku-4-5"),
         DB_PATH=str(cfg.DB_PATH),
-        AUX_CSV=str(cfg.AUX_CSV),
+        AUX_CSV=str(aux_csv),
         UPLOAD_DIR=str(cfg.UPLOAD_DIR),
         REVIEW_DIR=str(cfg.REVIEW_DIR),
         ARCHIVE_DIR=str(cfg.ARCHIVE_DIR),
@@ -36,11 +43,17 @@ def create_app():
         INSTANCE_LABEL=getattr(cfg, "INSTANCE_LABEL", "res domus"),
         BASIC_AUTH_USER=cfg.BASIC_AUTH_USER,
         BASIC_AUTH_PASS=cfg.BASIC_AUTH_PASS,
+        DEMO_MODE=demo_mode,
     )
 
     @app.context_processor
     def inject_globals():
-        return {"instance_label": app.config["INSTANCE_LABEL"]}
+        from datetime import date
+        return {
+            "instance_label": app.config["INSTANCE_LABEL"],
+            "demo_mode": app.config["DEMO_MODE"],
+            "current_year": date.today().year,
+        }
 
     # Warn (don't crash, don't create) if the DB is missing or not initialized yet
     db_path = Path(app.config["DB_PATH"])
@@ -103,6 +116,18 @@ def create_app():
                 "Authentication required", 401,
                 {"WWW-Authenticate": 'Basic realm="Res Domus"'},
             )
+        return None
+
+    # In DEMO_MODE, block every write so the public showcase can't be edited
+    # or corrupted by visitors. /api/chat/query is exempted here because it's
+    # handled specially inside api/chat.py (returns a static response there
+    # instead of calling Claude) rather than erroring out.
+    @app.before_request
+    def block_demo_writes():
+        if not app.config["DEMO_MODE"]:
+            return None
+        if request.method in ("POST", "PATCH", "PUT", "DELETE") and request.path != "/api/chat/query":
+            return jsonify({"error": "Read-only demo: writes are disabled."}), 403
         return None
 
     # Register API blueprints

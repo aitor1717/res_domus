@@ -17,15 +17,6 @@ function mkGrad(r, g, b, a0 = 0.22, a1 = 0.01) {
   return g2;
 }
 
-function ptStyle(data, anomIdx) {
-  return {
-    pointRadius:          data.map((_, i) => i === anomIdx ? 9 : 3),
-    pointBorderColor:     data.map((_, i) => i === anomIdx ? '#FF6F91' : '#FF9D6E'),
-    pointBackgroundColor: data.map((_, i) => i === anomIdx ? 'transparent' : '#FF9D6E'),
-    pointBorderWidth:     data.map((_, i) => i === anomIdx ? 2.5 : 1.5),
-  };
-}
-
 chart = new Chart(ctx, {
   type: 'line',
   data: {
@@ -34,23 +25,22 @@ chart = new Chart(ctx, {
       {
         label: 'total', data: [], borderColor: '#FF9D6E',
         backgroundColor: mkGrad(255, 157, 110), borderWidth: 3,
-        fill: true, tension: 0.42, order: 3,
-        pointRadius: [], pointBorderColor: [], pointBackgroundColor: [], pointBorderWidth: [],
+        fill: true, tension: 0.42, order: 3, pointRadius: 0,
       },
       {
         label: 'groceries', data: [], borderColor: '#FFC2D6',
         backgroundColor: mkGrad(255, 194, 214, 0.18), borderWidth: 2,
-        borderDash: [6, 3], fill: true, tension: 0.42, pointRadius: 3, order: 2,
+        borderDash: [6, 3], fill: true, tension: 0.42, pointRadius: 0, order: 2,
       },
       {
         label: 'meat', data: [], borderColor: '#FF6F91',
         backgroundColor: mkGrad(255, 111, 145, 0.16), borderWidth: 2,
-        borderDash: [6, 3], fill: true, tension: 0.42, pointRadius: 3, order: 1,
+        borderDash: [6, 3], fill: true, tension: 0.42, pointRadius: 0, order: 1,
       },
       {
-        label: 'delivery + servicio', data: [], borderColor: '#FFE0A3',
+        label: 'delivery', data: [], borderColor: '#FFE0A3',
         backgroundColor: 'transparent', borderWidth: 1, fill: false,
-        tension: 0.42, pointRadius: 2, pointBackgroundColor: '#FFE0A3', order: 0,
+        tension: 0.42, pointRadius: 0, order: 0,
       },
     ],
   },
@@ -69,12 +59,14 @@ chart = new Chart(ctx, {
         usePointStyle: true,
         callbacks: {
           label: c => {
+            const tt = T[lang] || T.en;
             if (c.datasetIndex === 3) {
               const actual = (chartData[currentPeriod] || {}).delivery;
               const v = actual ? actual[c.dataIndex] : c.parsed.y;
-              return ` delivery + servicio  ${curr()}${(v || 0).toFixed(0)}`;
+              return ` ${tt.legDelivery}  ${curr()}${(v || 0).toFixed(0)}`;
             }
-            return ` ${c.dataset.label}  ${curr()}${c.parsed.y.toFixed(0)}`;
+            const labels = [tt.legTotal, tt.legGroceries, tt.legMeat];
+            return ` ${labels[c.datasetIndex] || c.dataset.label}  ${curr()}${c.parsed.y.toFixed(0)}`;
           },
         },
       },
@@ -180,8 +172,9 @@ async function loadKPIs(period = currentPeriod) {
   document.getElementById('kpi-avg-delta').textContent = ad != null ? `${ad > 0 ? '↑' : '↓'} ${Math.abs(ad)}%` : '—';
 
   document.getElementById('kpi-tracked').textContent = d.tracked_items || 0;
-  document.getElementById('kpi-tracked-delta').className = 'kpi-delta flat';
-  document.getElementById('kpi-tracked-delta').textContent = d.category_count ? `${d.category_count} cat.` : '—';
+  const trd = d.tracked_items_delta;
+  document.getElementById('kpi-tracked-delta').className = 'kpi-delta ' + (trd > 0 ? 'up' : trd < 0 ? 'down' : 'flat');
+  document.getElementById('kpi-tracked-delta').textContent = trd != null ? `${trd > 0 ? '↑' : '↓'} ${Math.abs(trd)}%` : '—';
 }
 
 async function loadChart(period) {
@@ -189,10 +182,8 @@ async function loadChart(period) {
   chartData[period] = d;
   if (period !== currentPeriod) return;
 
-  const anomIdx = d.anomalyIdx;
-  const ps = ptStyle(d.total || [], anomIdx);
   chart.data.labels = d.labels || [];
-  Object.assign(chart.data.datasets[0], { data: d.total || [], ...ps });
+  chart.data.datasets[0].data = d.total || [];
   chart.data.datasets[1].data = d.groceries || d.abarrotes || [];
   chart.data.datasets[2].data = d.meat || d.carnes || [];
   chart.data.datasets[3].data = d.deliveryAbove || [];
@@ -247,12 +238,12 @@ function makeCircle(item, i) {
   div.className = 'ni';
   div.style.cssText = `--nd:${0.35 + i * 0.07}s`;
   div.innerHTML = `
-    <div class="ni-circ" style="box-shadow:0 0 14px ${color}4d">
+    <div class="ni-circ">
       <svg viewBox="0 0 36 36">
         <circle cx="18" cy="18" r="15.915" fill="none" stroke="rgba(255,157,110,.14)" stroke-width="2.5"/>
         <circle cx="18" cy="18" r="15.915" fill="none" stroke="${color}" stroke-width="2.5"
           stroke-linecap="round" data-pct="${pct}"
-          transform="rotate(-90 18 18)" class="ni-arc"/>
+          transform="rotate(-90 18 18)" class="ni-arc" style="filter:drop-shadow(0 0 3px ${color})"/>
       </svg>
       <div class="ni-val">
         <span class="ni-val-pct" style="color:${color}">${pct}%</span>
@@ -388,6 +379,7 @@ const T = {
   es: {
     budget: 'presupuesto', chart: 'historial de gastos',
     legTotal: 'total', legDelivery: 'delivery + servicio',
+    legGroceries: 'abarrotes', legMeat: 'carnes',
     needed: 'por agotar',
     bycat: 'mayor gasto',
     periodLabels: { '30d': 'este mes', '90d': 'últ. 90d', 'all': 'todo' },
@@ -405,6 +397,7 @@ const T = {
   en: {
     budget: 'budget', chart: 'spending history',
     legTotal: 'total', legDelivery: 'delivery + service',
+    legGroceries: 'groceries', legMeat: 'meat',
     needed: 'running low',
     bycat: 'top spend',
     periodLabels: { '30d': 'this month', '90d': 'last 90d', 'all': 'all time' },
@@ -461,6 +454,10 @@ function setLang(l) {
   // Re-render budget meta text in new language
   const spentEl = document.getElementById('ringmeta-spent');
   if (spentEl && spentEl.innerHTML) loadBudget();
+
+  // Needed-soon empty-state message (data-driven text, not tagged .i18n)
+  const neededNote = document.getElementById('neededNote');
+  if (neededNote && neededNote.innerHTML) loadNeeded();
 
   scrollChat();
 }

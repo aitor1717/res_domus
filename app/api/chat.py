@@ -474,6 +474,14 @@ def chat_notice():
     return jsonify({"notice": notice})
 
 
+# Placeholder — swap for real copy before publishing. Kept in both languages
+# so the response shape matches a normal answer regardless of UI language.
+DEMO_CHAT_MSG = {
+    "en": "The warehouse manager isn't available in demo mode.",
+    "es": "El gestor de almacén no está disponible en modo demo.",
+}
+
+
 @bp.post("/query")
 def query():
     data = request.get_json(force=True)
@@ -482,6 +490,11 @@ def query():
     history = data.get("history") or []
     if not question:
         return jsonify({"error": "question required"}), 400
+
+    if current_app.config.get("DEMO_MODE"):
+        # No Claude call, no DB write, no chat-log/ntfy — a public demo query
+        # should never reach any of that.
+        return jsonify({"answer": DEMO_CHAT_MSG.get(lang, DEMO_CHAT_MSG["en"]), "sql": None, "rows": []})
 
     _log_chat_entry(question)
 
