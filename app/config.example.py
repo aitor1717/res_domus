@@ -12,7 +12,10 @@ BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR.parent / "data"
 
 # API key — reads from environment variable first, falls back to the value below.
-ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "sk-ant-...")
+# Get one at https://console.anthropic.com/, or leave this blank and add it
+# later via Settings -> AI Manager in the app; blank means upload/chat show a
+# friendly "not configured" message instead of AI features.
+ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 
 # Models — vision receipt parsing needs a strong model; the NL→SQL chat is a
 # simpler, schema-constrained task and runs fine (much cheaper) on Haiku.

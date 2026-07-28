@@ -28,6 +28,7 @@ def flask_app(monkeypatch):
     monkeypatch.setenv("BASIC_AUTH_USER", TEST_USER)
     monkeypatch.setenv("BASIC_AUTH_PASS", TEST_PASS)
     monkeypatch.setenv("ANTHROPIC_API_KEY", "")
+    monkeypatch.setenv("DEMO_MODE", "0")
 
     # config.py reads env vars at import time; reload so the values above
     # take effect even if a previous test already imported/cached it.

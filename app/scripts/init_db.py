@@ -14,10 +14,10 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(BASE_DIR))
 
+import config as cfg  # noqa: E402
 from parser.build_db import SCHEMA, VIEWS  # noqa: E402
 
-DATA_DIR = BASE_DIR.parent / "data"
-DB_PATH = DATA_DIR / "res_domus.db"
+DB_PATH = cfg.DB_PATH
 
 
 def main():
@@ -25,6 +25,7 @@ def main():
         print(f"{DB_PATH.name} already exists — leaving it untouched.")
         return
 
+    cfg.ensure_dirs()
     conn = sqlite3.connect(DB_PATH)
     conn.executescript(SCHEMA)
     conn.executescript(VIEWS)

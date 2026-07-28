@@ -153,7 +153,7 @@ def _balance_after_write(conn: sqlite3.Connection, rng: random.Random) -> None:
     # Targets for positions 0-11 in the final display
     TARGETS = [1.12, 1.08, 0.80, 0.72, 0.64, 0.56, 0.48, 0.42, 0.38, 0.15, 0.15, 0.15]
     CATCHUP = 0.15   # urgency target for all remaining overdue items (rank 13+)
-    SKIP_CATS = "('Service')"
+    SKIP_CATS = "('Service','Servicio')"  # delivery/service category, EN and ES template variants
 
     all_overdue = conn.execute(f"""
         SELECT matched_id, reorder_urgency, avg_interval_days
@@ -211,7 +211,7 @@ def _shape_demo(conn: sqlite3.Connection, rng: random.Random) -> None:
        a tight July goal and has already exceeded it.
     """
     today = date.today()
-    SKIP_CATS = "('Service')"
+    SKIP_CATS = "('Service','Servicio')"  # delivery/service category, EN and ES template variants
     col_names = [r[1] for r in conn.execute("PRAGMA table_info(purchases)").fetchall()]
 
     # Pull a pool of reliable items with their typical price/qty.
@@ -264,13 +264,16 @@ def _shape_demo(conn: sqlite3.Connection, rng: random.Random) -> None:
 
     if pool:
         items = list(pool)
-        # Regular shops through the 30d window (adds density/realism). Total
-        # injected spend is capped as a fraction of the household's own
-        # 18-month baseline (read fresh, pre-injection) rather than a fixed
-        # dollar figure, so the resulting last-30d-vs-baseline deviation lands
-        # in a realistic single-digit/low-teens range regardless of household
-        # size — a fixed dollar spike would read as a modest bump for a large
-        # household and a wild, implausible spike for a small one.
+        # Regular shops through the 30d window (adds density/realism). Sized
+        # as a fraction of the household's own 18-month baseline rather than
+        # a fixed dollar figure, so trips pull a sensible number of items
+        # regardless of household size (a fixed target could be smaller than
+        # a single item's price for a small household, or barely register
+        # for a large one). The exact last-30d-vs-baseline deviation this
+        # produces doesn't matter and isn't the point - _normalize_recent_
+        # deviation() below rescales the whole window to its own target
+        # afterward regardless of what this injection landed on; only the
+        # relative shape across days (via `weights`) survives that rescale.
         baseline_row = conn.execute("SELECT avg_baseline FROM v_budget").fetchone()
         baseline = (baseline_row[0] if baseline_row and baseline_row[0] else 600.0)
         SPIKE_FRACTION = 0.12
@@ -319,16 +322,9 @@ def _shape_demo(conn: sqlite3.Connection, rng: random.Random) -> None:
             conn.commit()
             conn.executescript(VIEWS)
 
-    # Set manual budget so ring reads ~74% used (on-track but slightly over pace)
-    row = conn.execute("SELECT spent_this_month FROM v_budget").fetchone()
-    if row and row[0]:
-        manual_budget = round(row[0] / 0.74, 2)
-        cur_month = today.strftime("%Y-%m")
-        conn.execute("DELETE FROM budget WHERE month = ?", (cur_month,))
-        conn.execute("INSERT INTO budget (month, manual_budget) VALUES (?, ?)",
-                     (cur_month, manual_budget))
-        conn.commit()
-        conn.executescript(VIEWS)
+    # Budget ring is anchored to ~74% in _normalize_recent_deviation, which
+    # runs after this function and re-reads spent_this_month post-rescale -
+    # anchoring it here too would just get immediately overwritten.
 
 
 def _normalize_recent_deviation(conn: sqlite3.Connection, rng: random.Random) -> None:
@@ -369,9 +365,10 @@ def _normalize_recent_deviation(conn: sqlite3.Connection, rng: random.Random) ->
         (factor, factor),
     )
     conn.commit()
-    conn.executescript(VIEWS)
 
     # Re-anchor the budget ring to ~74% now that spent_this_month shifted.
+    # v_budget isn't materialized, so it already reflects the UPDATE above
+    # without needing the views dropped/recreated.
     row = conn.execute("SELECT spent_this_month FROM v_budget").fetchone()
     if row and row[0]:
         manual_budget = round(row[0] / 0.74, 2)
@@ -380,7 +377,6 @@ def _normalize_recent_deviation(conn: sqlite3.Connection, rng: random.Random) ->
         conn.execute("INSERT INTO budget (month, manual_budget) VALUES (?, ?)",
                      (cur_month, manual_budget))
         conn.commit()
-        conn.executescript(VIEWS)
 
 
 def write_db(db_path: Path, rows: list[dict], rng: random.Random | None = None) -> None:

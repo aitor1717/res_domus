@@ -172,23 +172,18 @@ def chart():
     # count scales with the time range instead: 30d → 12 points, 90d → 36
     # (3x, matching the 3x longer window).
     BUCKET_DAYS = 2.5
-    if period == "30d":
+    if period in ("30d", "90d"):
+        # 30d and 90d differ only in window length - same bucket width, same
+        # label formatter, so one query shape covers both.
+        days = 30 if period == "30d" else 90
         rows = conn.execute(f"""
             SELECT CAST(julianday(datetime) / {BUCKET_DAYS} AS INTEGER) AS bucket,
                    MIN(datetime) AS min_date, {SUMS}
-            {BASE} AND datetime >= date('now', '-30 days')
+            {BASE} AND datetime >= date('now', '-{days} days')
             GROUP BY bucket ORDER BY bucket
         """).fetchall()
         current_bucket = conn.execute(f"SELECT CAST(julianday('now') / {BUCKET_DAYS} AS INTEGER)").fetchone()[0]
-        rows = [(r[0], fmt_label_weekly(r[1]), r[2], r[3], r[4], r[5]) for r in rows]
-    elif period == "90d":
-        rows = conn.execute(f"""
-            SELECT CAST(julianday(datetime) / {BUCKET_DAYS} AS INTEGER) AS bucket,
-                   MIN(datetime) AS min_date, {SUMS}
-            {BASE} AND datetime >= date('now', '-90 days')
-            GROUP BY bucket ORDER BY bucket
-        """).fetchall()
-        current_bucket = conn.execute(f"SELECT CAST(julianday('now') / {BUCKET_DAYS} AS INTEGER)").fetchone()[0]
+        raw_dates = [r[1] for r in rows]
         rows = [(r[0], fmt_label_weekly(r[1]), r[2], r[3], r[4], r[5]) for r in rows]
     else:  # all — monthly buckets → ~14 points
         rows = conn.execute(f"""
@@ -197,7 +192,8 @@ def chart():
             {BASE}
             GROUP BY bucket ORDER BY bucket
         """).fetchall()
-        current_bucket = conn.execute("SELECT strftime('%Y-%m', 'now')").fetchone()[0]
+        current_bucket = date.today().strftime("%Y-%m")  # no row data involved, no need for a DB round trip
+        raw_dates = [r[1] for r in rows]
         rows = [(r[0], fmt_label_all(r[1]), r[2], r[3], r[4], r[5]) for r in rows]
 
     # Drop a trailing bucket that's still in progress (spans days that haven't
@@ -208,6 +204,7 @@ def chart():
     # bucket exists (never returns an empty chart).
     if len(rows) > 1 and rows[-1][0] == current_bucket:
         rows = rows[:-1]
+        raw_dates = raw_dates[:-1]
 
     # Anomaly: most recent anomalous month — match against min_date of each bucket
     anomaly_row = conn.execute("""
@@ -231,9 +228,8 @@ def chart():
     anom_label_es = anom_label_en = ""
     if anomaly_row:
         anom_month = anomaly_row[0][:7]  # YYYY-MM
-        for i, r in enumerate(rows):
-            min_date = str(r[1] or "")
-            if min_date[:7] == anom_month:
+        for i, raw_date in enumerate(raw_dates):
+            if str(raw_date or "")[:7] == anom_month:
                 anom_idx = i
                 anom_label_es = f"anomalia · {labels[i]}"
                 anom_label_en = f"anomaly · {labels[i]}"

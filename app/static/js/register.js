@@ -85,12 +85,16 @@ function renderEntries(rows) {
   }
   const sum = rows.reduce((s, r) => s + (r.total_price || 0), 0);
   summary.innerHTML = `${rows.length} ${t('entries')} · ${t('total')} <span class="hi">${curr()}${sum.toFixed(2)}</span>`;
-  tbody.innerHTML = rows.map(r => `
+  tbody.innerHTML = rows.map(r => {
+    const qtyDisplay = r.quantity != null
+      ? String(r.quantity) + (r.unit ? ' ' + esc(r.unit) : '')
+      : '—';
+    return `
     <tr>
       <td>${esc(r.datetime || '')}</td>
       <td><span class="item-name">${esc(r.matched_id || r.raw_name || '')}</span></td>
       <td>${r.matched_category ? `<span class="cat-badge">${esc(r.matched_category)}</span>` : '—'}</td>
-      <td>${r.quantity ?? '—'}</td>
+      <td>${qtyDisplay}</td>
       <td>${r.unit_price != null ? curr() + Number(r.unit_price).toFixed(2) : '—'}</td>
       <td class="reg-total">${curr()}${Number(r.total_price || 0).toFixed(2)}</td>
       <td>${esc(r.source || '—')}</td>
@@ -98,7 +102,8 @@ function renderEntries(rows) {
         <button class="act-btn act-edit" onclick="openModal(${r.id})">${t('edit')}</button>
         <button class="act-btn act-del" onclick="deleteEntry(${r.id})">×</button>
       </td>
-    </tr>`).join('');
+    </tr>`;
+  }).join('');
 }
 
 /* ── EDIT MODAL ── */
@@ -133,7 +138,7 @@ async function saveEntry() {
     source:           document.getElementById('fSource').value.trim() || null,
   };
   if (!payload.raw_name) { document.getElementById('fRawName').focus(); return; }
-  if (typeof DEMO_MODE !== 'undefined' && DEMO_MODE) { alert(t('demoBlocked')); return; }
+  if (isDemoMode()) { alert(t('demoBlocked')); return; }
 
   const res = await fetch(`/api/register/entries/${id}`, {
     method: 'PATCH',
@@ -149,9 +154,10 @@ async function saveEntry() {
 }
 
 async function deleteEntry(id) {
-  if (typeof DEMO_MODE !== 'undefined' && DEMO_MODE) { alert(t('demoBlocked')); return; }
+  if (isDemoMode()) { alert(t('demoBlocked')); return; }
   if (!confirm(t('deleteConfirm'))) return;
-  await fetch(`/api/register/entries/${id}`, { method: 'DELETE' });
+  const res = await fetch(`/api/register/entries/${id}`, { method: 'DELETE' });
+  if (!res.ok) { alert(t('saveError')); return; }
   loadEntries(document.getElementById('searchInput').value);
 }
 

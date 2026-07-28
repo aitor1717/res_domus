@@ -1,2 +1,3 @@
 -r requirements.txt
 pytest>=8.0
+playwright>=1.40  # e2e browser tests (tests/e2e/) — after install, run once: playwright install chromium
