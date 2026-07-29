@@ -25,6 +25,12 @@
   }
   .search-input:focus { border-color: var(--cyan); }
   .search-input::placeholder { color: var(--dim); }
+  .add-item-btn {
+    padding: 8px 16px; background: rgba(255,224,163,.1); border: 1px solid rgba(255,224,163,.28);
+    border-radius: 8px; font-family: var(--mono); font-size: 10px; color: var(--green);
+    cursor: pointer; white-space: nowrap; transition: background .15s;
+  }
+  .add-item-btn:hover { background: rgba(255,224,163,.18); }
 
   .lib-table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 11px; }
   .lib-table th { padding: 6px 10px; border-bottom: 1px solid var(--border); color: var(--dim2); font-size: 9px; text-align: left; white-space: nowrap; position: sticky; top: 0; background: var(--surface); }
@@ -81,6 +87,7 @@
       <span style="color:var(--dim2);font-family:var(--mono);font-size:10px">→</span>
       <input type="date" class="reg-date-input" id="endDate" onchange="setCustomRange()">
       <input class="search-input i18n" id="searchInput" data-en="search item, category…" data-es="buscar item, categoría…" placeholder="buscar item, categoría…" oninput="searchEntries(this.value)">
+      <button class="add-item-btn i18n" data-en="+ new entry" data-es="+ nueva entrada" onclick="openModal()">+ nueva entrada</button>
     </div>
     <div class="reg-summary" id="regSummary"></div>
     <div style="overflow-x:auto">
@@ -108,7 +115,7 @@
 <!-- Edit modal -->
 <div class="modal-overlay" id="entryModal">
   <div class="modal">
-    <div class="modal-title i18n" data-en="edit entry" data-es="editar entrada">edit entry</div>
+    <div class="modal-title i18n" id="modalTitle" data-en="edit entry" data-es="editar entrada">edit entry</div>
     <input type="hidden" id="editId">
     <div class="field-row">
       <div class="field-group">

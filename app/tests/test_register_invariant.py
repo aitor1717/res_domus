@@ -1,11 +1,40 @@
 """
 Verifies the unit_price = total_price / quantity invariant (documented in
 CLAUDE.md's Schema invariants) holds on manual edits via PATCH
-/api/register/entries/<id> — the endpoint must recompute it server-side and
-ignore whatever value the client sends, even if the client sends a bogus one.
+/api/register/entries/<id> and manual creation via POST /api/register/entries
+— both endpoints must recompute it server-side and ignore whatever value the
+client sends, even if the client sends a bogus one.
 """
 
 import sqlite3
+
+
+def test_post_creates_entry_and_computes_unit_price(client, auth_headers, seeded_db):
+    resp = client.post(
+        "/api/register/entries",
+        json={"raw_name": "Manual Item", "quantity": 3, "total_price": 9.30,
+              "unit_price": 999, "datetime": "2026-07-01"},
+        headers=auth_headers,
+    )
+    assert resp.status_code == 201
+    body = resp.get_json()
+    assert body["raw_name"] == "Manual Item"
+    assert body["unit_price"] == round(9.30 / 3, 4)
+    assert body["unit_price"] != 999
+
+
+def test_post_requires_raw_name(client, auth_headers, seeded_db):
+    resp = client.post(
+        "/api/register/entries",
+        json={"quantity": 1, "total_price": 1},
+        headers=auth_headers,
+    )
+    assert resp.status_code == 400
+
+
+def test_post_requires_auth(client, seeded_db):
+    resp = client.post("/api/register/entries", json={"raw_name": "Manual Item"})
+    assert resp.status_code == 401
 
 
 def test_patch_recomputes_unit_price_and_ignores_client_value(client, auth_headers, seeded_db):

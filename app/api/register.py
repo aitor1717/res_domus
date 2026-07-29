@@ -4,6 +4,7 @@ in spirit to the items library but showing real rows instead of canon items.
 """
 
 import sqlite3
+from datetime import date
 from flask import Blueprint, jsonify, request, current_app
 
 bp = Blueprint("register", __name__, url_prefix="/api/register")
@@ -53,12 +54,58 @@ EDITABLE_FIELDS = [
     "quantity", "unit", "total_price", "source", "datetime", "gpt_notes",
 ]
 
+ENTRY_SELECT = (
+    "SELECT id, datetime, raw_name, matched_id, matched_category, matched_subcategory, "
+    "quantity, unit, unit_price, total_price, source, gpt_notes FROM purchases WHERE id = ?"
+)
+
 
 def _coerce_float(val):
     try:
         return float(val) if val not in (None, "", "None") else None
     except (ValueError, TypeError):
         return None
+
+
+@bp.post("/entries")
+def create_entry():
+    """Manual entry - lets a user log a purchase directly in the Register
+    page instead of only via receipt upload or the chat's NL purchase
+    logging. Same unit_price invariant as every other write path."""
+    data = request.get_json(force=True)
+    raw_name = (data.get("raw_name") or "").strip()
+    if not raw_name:
+        return jsonify({"error": "raw_name required"}), 400
+
+    quantity = _coerce_float(data.get("quantity"))
+    total_price = _coerce_float(data.get("total_price"))
+    unit_price = round(total_price / quantity, 4) if quantity and total_price is not None else None
+
+    values = {
+        "raw_name": raw_name,
+        "matched_id": (data.get("matched_id") or "").strip() or None,
+        "matched_category": (data.get("matched_category") or "").strip() or None,
+        "quantity": quantity,
+        "unit": (data.get("unit") or "").strip() or None,
+        "unit_price": unit_price,
+        "total_price": total_price,
+        "source": (data.get("source") or "").strip() or None,
+        "datetime": data.get("datetime") or date.today().isoformat(),
+        "source_file": "manual-entry",
+    }
+
+    conn = _db()
+    cur = conn.execute(
+        "INSERT INTO purchases (raw_name, matched_id, matched_category, quantity, unit, "
+        "unit_price, total_price, source, datetime, source_file) "
+        "VALUES (:raw_name, :matched_id, :matched_category, :quantity, :unit, "
+        ":unit_price, :total_price, :source, :datetime, :source_file)",
+        values,
+    )
+    conn.commit()
+    created = _rows_as_dicts(conn.execute(ENTRY_SELECT, (cur.lastrowid,)))[0]
+    conn.close()
+    return jsonify(created), 201
 
 
 @bp.patch("/entries/<int:entry_id>")
@@ -87,11 +134,7 @@ def update_entry(entry_id: int):
 
     conn.execute(f"UPDATE purchases SET {', '.join(fields)} WHERE id = ?", values)
     conn.commit()
-    updated = _rows_as_dicts(conn.execute(
-        "SELECT id, datetime, raw_name, matched_id, matched_category, matched_subcategory, "
-        "quantity, unit, unit_price, total_price, source, gpt_notes FROM purchases WHERE id = ?",
-        (entry_id,),
-    ))[0]
+    updated = _rows_as_dicts(conn.execute(ENTRY_SELECT, (entry_id,)))[0]
     conn.close()
     return jsonify(updated)
 

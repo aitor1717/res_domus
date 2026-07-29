@@ -10,11 +10,11 @@ let allEntries = [];
 const RT = {
   en: { noResults: 'no entries in this range', loading: 'loading…', total: 'total',
         entries: 'entries', searchPlaceholder: 'search item, category…',
-        edit: 'edit', editTitle: 'edit entry', deleteConfirm: 'Delete this entry?', saveError: 'Error saving entry',
+        edit: 'edit', editTitle: 'edit entry', newTitle: 'new entry', deleteConfirm: 'Delete this entry?', saveError: 'Error saving entry',
         demoBlocked: 'Editing isn\'t available in demo mode.' },
   es: { noResults: 'sin entradas en este rango', loading: 'cargando…', total: 'total',
         entries: 'entradas', searchPlaceholder: 'buscar item, categoría…',
-        edit: 'editar', editTitle: 'editar entrada', deleteConfirm: '¿Eliminar esta entrada?', saveError: 'Error al guardar',
+        edit: 'editar', editTitle: 'editar entrada', newTitle: 'nueva entrada', deleteConfirm: '¿Eliminar esta entrada?', saveError: 'Error al guardar',
         demoBlocked: 'La edición no está disponible en modo demo.' },
 };
 function t(key) { return (RT[lang] || RT.en)[key] || key; }
@@ -106,18 +106,22 @@ function renderEntries(rows) {
   }).join('');
 }
 
-/* ── EDIT MODAL ── */
-function openModal(id) {
-  const entry = allEntries.find(e => e.id === id);
-  if (!entry) return;
-  document.getElementById('editId').value = entry.id;
-  document.getElementById('fRawName').value = entry.raw_name || '';
-  document.getElementById('fMatchedId').value = entry.matched_id || '';
-  document.getElementById('fCategory').value = entry.matched_category || '';
-  document.getElementById('fDate').value = entry.datetime || '';
-  document.getElementById('fQuantity').value = entry.quantity ?? '';
-  document.getElementById('fTotalPrice').value = entry.total_price ?? '';
-  document.getElementById('fSource').value = entry.source || '';
+/* ── EDIT / NEW MODAL ── */
+function openModal(id = null) {
+  let entry = null;
+  if (id != null) {
+    entry = allEntries.find(e => e.id === id);
+    if (!entry) return;
+  }
+  document.getElementById('modalTitle').textContent = entry ? t('editTitle') : t('newTitle');
+  document.getElementById('editId').value = entry ? entry.id : '';
+  document.getElementById('fRawName').value = entry ? (entry.raw_name || '') : '';
+  document.getElementById('fMatchedId').value = entry ? (entry.matched_id || '') : '';
+  document.getElementById('fCategory').value = entry ? (entry.matched_category || '') : '';
+  document.getElementById('fDate').value = entry ? (entry.datetime || '') : isoLocal(new Date());
+  document.getElementById('fQuantity').value = entry ? (entry.quantity ?? '') : '';
+  document.getElementById('fTotalPrice').value = entry ? (entry.total_price ?? '') : '';
+  document.getElementById('fSource').value = entry ? (entry.source || '') : '';
   document.getElementById('entryModal').classList.add('open');
   document.getElementById('fRawName').focus();
 }
@@ -140,8 +144,8 @@ async function saveEntry() {
   if (!payload.raw_name) { document.getElementById('fRawName').focus(); return; }
   if (isDemoMode()) { alert(t('demoBlocked')); return; }
 
-  const res = await fetch(`/api/register/entries/${id}`, {
-    method: 'PATCH',
+  const res = await fetch(id ? `/api/register/entries/${id}` : '/api/register/entries', {
+    method: id ? 'PATCH' : 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
