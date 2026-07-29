@@ -250,9 +250,11 @@ def chart():
 @bp.get("/needed-soon")
 def needed_soon():
     conn = _db()
-    # 12 items in a deliberate display order: [red, red, yellow, yellow, yellow,
-    # green, yellow, yellow, yellow, yellow, green, green].
-    # Default-visible first 6 = 2 critical + 3 mid + 1 fine; see-more = next 6.
+    # Selection is deliberately stratified (2 critical + up to 7 mid +
+    # up to 3 fine, 12 max) so the default-visible first 6 isn't just the
+    # 6 most urgent items - it always includes at least one "you're fine"
+    # item instead of reading as a wall of red/orange. Once selected,
+    # display order is plain urgency descending.
     cur = conn.execute(f"""
         WITH scored AS (
           SELECT matched_id, matched_category, last_purchase_date,
@@ -278,14 +280,7 @@ def needed_soon():
         WHERE (bucket = 1 AND rn <= 2)
            OR (bucket = 2 AND rn <= 7)
            OR (bucket = 3 AND rn <= 3)
-        ORDER BY
-          CASE
-            WHEN bucket = 1 THEN rn
-            WHEN bucket = 2 AND rn <= 3 THEN rn + 2
-            WHEN bucket = 3 AND rn = 1  THEN 6
-            WHEN bucket = 2 AND rn > 3  THEN rn + 3
-            ELSE rn + 9
-          END
+        ORDER BY reorder_urgency DESC
         LIMIT 12
     """)
     rows = _rows_as_dicts(cur)
