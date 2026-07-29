@@ -216,6 +216,7 @@ if ('serviceWorker' in navigator) {
   });
 }
 </script>
+{% if demo_mode %}<script src="/static/demo_es_translations.js"></script>{% endif %}
 <script src="/static/js/utils.js"></script>
 {% block scripts %}{% endblock %}
 </body>

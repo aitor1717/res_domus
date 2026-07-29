@@ -25,22 +25,22 @@ chart = new Chart(ctx, {
       {
         label: 'total', data: [], borderColor: '#FF9D6E',
         backgroundColor: mkGrad(255, 157, 110), borderWidth: 3,
-        fill: true, tension: 0.42, order: 3, pointRadius: 0,
+        fill: true, tension: 0.42, order: 3, pointRadius: 0, pointHoverRadius: 0,
       },
       {
         label: 'groceries', data: [], borderColor: '#FFC2D6',
         backgroundColor: mkGrad(255, 194, 214, 0.18), borderWidth: 2,
-        borderDash: [6, 3], fill: true, tension: 0.42, pointRadius: 0, order: 2,
+        borderDash: [6, 3], fill: true, tension: 0.42, pointRadius: 0, pointHoverRadius: 0, order: 2,
       },
       {
         label: 'meat', data: [], borderColor: '#FF6F91',
         backgroundColor: mkGrad(255, 111, 145, 0.16), borderWidth: 2,
-        borderDash: [6, 3], fill: true, tension: 0.42, pointRadius: 0, order: 1,
+        borderDash: [6, 3], fill: true, tension: 0.42, pointRadius: 0, pointHoverRadius: 0, order: 1,
       },
       {
         label: 'delivery', data: [], borderColor: '#FFE0A3',
         backgroundColor: 'transparent', borderWidth: 1, fill: false,
-        tension: 0.42, pointRadius: 0, order: 0,
+        tension: 0.42, pointRadius: 0, pointHoverRadius: 0, order: 0,
       },
     ],
   },
@@ -156,9 +156,7 @@ async function loadKPIs(period = currentPeriod) {
 
   const tot = d.month_total || 0;
   document.getElementById('kpi-total').innerHTML = `<span class="curr-kpi">${curr()}</span>${tot.toFixed(2)}`;
-  const td = d.month_total_delta;
-  document.getElementById('kpi-total-delta').className = 'kpi-delta ' + (td > 0 ? 'up' : td < 0 ? 'down' : 'flat');
-  document.getElementById('kpi-total-delta').textContent = td != null ? `${td > 0 ? '↑' : '↓'} ${Math.abs(td)}%` : '—';
+  renderPctDelta('kpi-total-delta', d.month_total_delta);
 
   document.getElementById('kpi-orders').textContent = d.orders || 0;
   const od = d.orders_delta || 0;
@@ -172,9 +170,16 @@ async function loadKPIs(period = currentPeriod) {
   document.getElementById('kpi-avg-delta').textContent = ad != null ? `${ad > 0 ? '↑' : '↓'} ${Math.abs(ad)}%` : '—';
 
   document.getElementById('kpi-tracked').textContent = d.tracked_items || 0;
-  const trd = d.tracked_items_delta;
-  document.getElementById('kpi-tracked-delta').className = 'kpi-delta ' + (trd > 0 ? 'up' : trd < 0 ? 'down' : 'flat');
-  document.getElementById('kpi-tracked-delta').textContent = trd != null ? `${trd > 0 ? '↑' : '↓'} ${Math.abs(trd)}%` : '—';
+  renderPctDelta('kpi-tracked-delta', d.tracked_items_delta);
+}
+
+// Shared by kpi-total-delta and kpi-tracked-delta: both render a
+// "flat unless strictly positive/negative" arrow+percent delta. avg/orders
+// use different thresholds and formats, so aren't folded in here.
+function renderPctDelta(elId, val) {
+  const el = document.getElementById(elId);
+  el.className = 'kpi-delta ' + (val > 0 ? 'up' : val < 0 ? 'down' : 'flat');
+  el.textContent = val != null ? `${val > 0 ? '↑' : '↓'} ${Math.abs(val)}%` : '—';
 }
 
 async function loadChart(period) {
@@ -249,7 +254,7 @@ function makeCircle(item, i) {
         <span class="ni-val-pct" style="color:${color}">${pct}%</span>
       </div>
     </div>
-    <div class="ni-name">${esc(item.matched_id || '—')}</div>`;
+    <div class="ni-name">${esc(trItem(item.matched_id) || '—')}</div>`;
   return div;
 }
 
@@ -267,7 +272,7 @@ async function loadTopItems(period = currentPeriod) {
     row.className = 'ti-row';
     // Use actual pct for bar width so bars reflect real share, not just relative rank
     row.innerHTML = `
-      <div class="ti-name">${esc(item.matched_id)}</div>
+      <div class="ti-name">${esc(trItem(item.matched_id))}</div>
       <div class="ti-bar"><div class="ti-fill" style="width:${item.pct}%"></div></div>
       <div class="ti-pct">${item.pct}%</div>`;
     list.appendChild(row);
@@ -451,13 +456,19 @@ function setLang(l) {
     if (anomEl) anomEl.textContent = anom.anomalyLabel[l] || '';
   }
 
-  // Re-render budget meta text in new language
+  // Re-render everything that bakes curr()/trItem() (currency, and in demo
+  // mode, translated item names) directly into rendered HTML rather than
+  // just toggling static .i18n text - a plain language switch without a
+  // page reload would otherwise leave these frozen at whatever they were on
+  // initial load.
   const spentEl = document.getElementById('ringmeta-spent');
   if (spentEl && spentEl.innerHTML) loadBudget();
-
-  // Needed-soon empty-state message (data-driven text, not tagged .i18n)
-  const neededNote = document.getElementById('neededNote');
-  if (neededNote && neededNote.innerHTML) loadNeeded();
+  loadKPIs(currentPeriod);
+  loadTopItems(currentPeriod);
+  loadNeeded();
+  loadChart(currentPeriod);
+  loadOrders(currentPeriod);
+  loadChatNotice();
 
   scrollChat();
 }
@@ -585,11 +596,16 @@ async function confirmDraftPurchase(btn) {
 async function loadChatNotice() {
   try {
     const d = await fetch(`/api/chat/notice?lang=${lang}`).then(r => r.json());
+    // Re-called on language switch (see setLang) as well as on initial load,
+    // so replace any previous notice bubble instead of stacking a new one.
+    const existing = document.getElementById('chatNoticeMsg');
+    if (existing) existing.remove();
     if (!d.notice) return;
     const box = document.getElementById('chatMsgs');
     const mb = document.createElement('div');
+    mb.id = 'chatNoticeMsg';
     mb.className = 'msg msg-b';
-    mb.textContent = d.notice;
+    mb.textContent = trNoticeText(d.notice);
     box.appendChild(mb);
   } catch {}
 }

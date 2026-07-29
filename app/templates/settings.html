@@ -34,10 +34,6 @@
     cursor: pointer; transition: background .15s; margin-top: 4px;
   }
   .import-btn:hover { background: rgba(255,157,110,.15); }
-  .setting-input:disabled, .save-btn:disabled, .import-btn:disabled {
-    opacity: .45; cursor: not-allowed;
-  }
-  .setting-input:disabled:hover, .save-btn:disabled:hover { background: inherit; }
 
   /* Import/Export share one box, buttons styled identically */
   .db-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 4px; }
@@ -75,7 +71,14 @@
   <div class="card mb">
     <div class="card-label i18n" data-en="MONTHLY BUDGET" data-es="PRESUPUESTO MENSUAL">PRESUPUESTO MENSUAL</div>
     <div class="setting-row">
-      <div class="setting-label i18n" data-en="Spending limit ($)" data-es="Límite de gasto (S/.)">Límite de gasto (S/.)</div>
+      <div class="setting-label i18n" data-en="Currency" data-es="Moneda">Moneda</div>
+      <select class="setting-input" id="currencyInput" onchange="saveCurrency()">
+        <option value="$">$</option>
+        <option value="S/.">S/.</option>
+      </select>
+    </div>
+    <div class="setting-row">
+      <div class="setting-label i18n" data-en="Spending limit" data-es="Límite de gasto">Límite de gasto</div>
       <input class="setting-input" id="budgetInput" type="number" min="0" step="10" placeholder="—">
       <button class="save-btn i18n" id="budgetSaveBtn" data-en="save" data-es="guardar" onclick="saveBudget()">guardar</button>
     </div>
@@ -100,7 +103,8 @@
   {% if demo_mode %}
   <div class="card mb attrib-box" id="attribBox">
     Aitor Bazo · {{ current_year }}<br>
-    Portfolio · <a href="https://github.com/aitor1717" target="_blank" rel="noopener">GitHub</a> · <a href="https://www.linkedin.com/in/aitorbazo" target="_blank" rel="noopener">LinkedIn</a>
+    <!-- TODO: replace with the real repo URL before publishing -->
+    <a href="#" target="_blank" rel="noopener">GitHub</a>
   </div>
   {% endif %}
 
@@ -137,7 +141,20 @@
     document.querySelectorAll('.i18n').forEach(el => { if (el.dataset[l]) el.textContent = el.dataset[l]; });
     // Re-render dynamic status text in new language
     checkApiKeyStatus();
+    initCurrencySelect();
   };
+
+  // Currency is independent of language (a Spanish speaker might still want
+  // $, etc.) but defaults to match the language until explicitly overridden.
+  function initCurrencySelect() {
+    const el = document.getElementById('currencyInput');
+    if (!el) return;
+    const saved = localStorage.getItem('currency');
+    el.value = (saved === '$' || saved === 'S/.') ? saved : (lang === 'en' ? '$' : 'S/.');
+  }
+  function saveCurrency() {
+    localStorage.setItem('currency', document.getElementById('currencyInput').value);
+  }
 
   function demoBlock(el) {
     el.className = 'status-msg err';
@@ -147,7 +164,7 @@
 
   async function saveBudget() {
     const el = document.getElementById('budgetStatus');
-    if (typeof DEMO_MODE !== 'undefined' && DEMO_MODE) { demoBlock(el); return; }
+    if (isDemoMode()) { demoBlock(el); return; }
     const val = document.getElementById('budgetInput').value;
     const month = new Date().toISOString().slice(0, 7);
     const res = await fetch('/api/settings/budget', {
@@ -161,7 +178,7 @@
 
   async function runImport() {
     const el = document.getElementById('importStatus');
-    if (typeof DEMO_MODE !== 'undefined' && DEMO_MODE) { demoBlock(el); return; }
+    if (isDemoMode()) { demoBlock(el); return; }
     el.className = 'status-msg'; el.textContent = st('importing');
     const res = await fetch('/api/settings/reimport', { method: 'POST' });
     const data = await res.json();
@@ -171,7 +188,7 @@
 
   async function saveApiKey() {
     const el = document.getElementById('apiKeyStatus');
-    if (typeof DEMO_MODE !== 'undefined' && DEMO_MODE) { demoBlock(el); return; }
+    if (isDemoMode()) { demoBlock(el); return; }
     const val = document.getElementById('apiKeyInput').value.trim();
     const res = await fetch('/api/settings/api-key', {
       method: 'POST',
@@ -188,7 +205,7 @@
     // Demo mode: field looks like any other field until someone tries to
     // actually save (see demoBlock(), called from saveApiKey()) - no
     // disabled/greyed-out affordance up front.
-    if (typeof DEMO_MODE !== 'undefined' && DEMO_MODE) return;
+    if (isDemoMode()) return;
     const res = await fetch('/api/settings/api-key');
     const data = await res.json();
     if (data.configured) {

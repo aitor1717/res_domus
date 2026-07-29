@@ -403,8 +403,8 @@ def _get_notice(db_path: str, lang: str = "en") -> str | None:
         if row and row[0] and row[0] >= 80:
             pct = int(row[0])
             if lang == "es":
-                return f"Presupuesto al {pct}% — quedan {days_left} días."
-            return f"Budget at {pct}% — {days_left} days remaining."
+                return f"Presupuesto al {pct}%, quedan {days_left} días."
+            return f"Budget at {pct}%, {days_left} days remaining."
 
         # Priority 1.5: any item with 0–3 days of stock left — concrete and actionable.
         # Reads v_stock_estimates.days_of_stock_left rather than recomputing
@@ -453,12 +453,12 @@ def _get_notice(db_path: str, lang: str = "en") -> str | None:
             suffix_en = f"last bought {days_since} days ago."
             if urgency >= 1.0:
                 if lang == "es":
-                    return f"Te estás quedando sin {item} — {suffix_es}"
-                return f"You're about to run out of {item} — {suffix_en}"
+                    return f"Te estás quedando sin {item}, {suffix_es}"
+                return f"You're about to run out of {item}, {suffix_en}"
             else:
                 if lang == "es":
-                    return f"Pronto necesitarás {item} — {suffix_es}"
-                return f"You'll need {item} soon — {suffix_en}"
+                    return f"Pronto necesitarás {item}, {suffix_es}"
+                return f"You'll need {item} soon, {suffix_en}"
     except Exception:
         pass
     finally:

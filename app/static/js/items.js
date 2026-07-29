@@ -58,22 +58,25 @@ function renderItems(items) {
     tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state">${t('noResults')}</div></td></tr>`;
     return;
   }
-  tbody.innerHTML = items.map(item => `
+  tbody.innerHTML = items.map(item => {
+    const synDisplay = trSynonyms(item.item, item.synonyms || '');
+    return `
     <tr>
       <td style="color:var(--dim2)">${item.id}</td>
       <td>
-        <span class="item-name">${esc(item.item || '')}</span>
-        ${item.synonyms ? `<span class="item-syn">${esc(item.synonyms)}</span>` : ''}
+        <span class="item-name">${esc(trItem(item.item) || '')}</span>
+        ${synDisplay ? `<span class="item-syn">${esc(synDisplay)}</span>` : ''}
       </td>
       <td style="color:var(--cyan);font-family:var(--mono)">${esc(item.unit || '—')}</td>
-      <td><span class="cat-badge">${esc(item.category || '—')}</span></td>
-      <td style="color:var(--dim2)">${esc(item.subcategory || '—')}</td>
-      <td style="color:var(--dim2);font-size:9px">${esc((item.synonyms || '').slice(0, 40))}${(item.synonyms || '').length > 40 ? '…' : ''}</td>
+      <td><span class="cat-badge">${esc(trCategory(item.category) || '—')}</span></td>
+      <td style="color:var(--dim2)">${esc(trSubcategory(item.subcategory) || '—')}</td>
+      <td style="color:var(--dim2);font-size:9px">${esc(synDisplay.slice(0, 40))}${synDisplay.length > 40 ? '…' : ''}</td>
       <td>
         <button class="act-btn act-edit" onclick="openModal(${JSON.stringify(item).replace(/"/g,'&quot;')})">${t('edit')}</button>
         <button class="act-btn act-del" onclick="deleteItem('${item.id}')">×</button>
       </td>
-    </tr>`).join('');
+    </tr>`;
+  }).join('');
 }
 
 /* ── SEARCH ── */
@@ -113,7 +116,7 @@ async function saveItem() {
     tags:        document.getElementById('fTags').value.trim(),
   };
   if (!payload.item) { document.getElementById('fItem').focus(); return; }
-  if (typeof DEMO_MODE !== 'undefined' && DEMO_MODE) { alert(t('demoBlocked')); return; }
+  if (isDemoMode()) { alert(t('demoBlocked')); return; }
 
   const url = id ? `/api/items/${id}` : '/api/items';
   const method = id ? 'PATCH' : 'POST';
@@ -131,9 +134,10 @@ async function saveItem() {
 }
 
 async function deleteItem(id) {
-  if (typeof DEMO_MODE !== 'undefined' && DEMO_MODE) { alert(t('demoBlocked')); return; }
+  if (isDemoMode()) { alert(t('demoBlocked')); return; }
   if (!confirm(t('deleteConfirm'))) return;
-  await fetch(`/api/items/${id}`, { method: 'DELETE' });
+  const res = await fetch(`/api/items/${id}`, { method: 'DELETE' });
+  if (!res.ok) { alert(t('saveError')); return; }
   loadItems(document.getElementById('searchInput').value);
 }
 

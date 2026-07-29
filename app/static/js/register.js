@@ -92,8 +92,8 @@ function renderEntries(rows) {
     return `
     <tr>
       <td>${esc(r.datetime || '')}</td>
-      <td><span class="item-name">${esc(r.matched_id || r.raw_name || '')}</span></td>
-      <td>${r.matched_category ? `<span class="cat-badge">${esc(r.matched_category)}</span>` : '—'}</td>
+      <td><span class="item-name">${esc(trItem(r.matched_id) || r.raw_name || '')}</span></td>
+      <td>${r.matched_category ? `<span class="cat-badge">${esc(trCategory(r.matched_category))}</span>` : '—'}</td>
       <td>${qtyDisplay}</td>
       <td>${r.unit_price != null ? curr() + Number(r.unit_price).toFixed(2) : '—'}</td>
       <td class="reg-total">${curr()}${Number(r.total_price || 0).toFixed(2)}</td>
