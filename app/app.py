@@ -1,6 +1,7 @@
 import hmac
 import logging
 import sqlite3
+from datetime import date
 from pathlib import Path
 
 from flask import Flask, render_template, request, Response, send_from_directory, jsonify
@@ -48,7 +49,6 @@ def create_app():
 
     @app.context_processor
     def inject_globals():
-        from datetime import date
         return {
             "instance_label": app.config["INSTANCE_LABEL"],
             "demo_mode": app.config["DEMO_MODE"],
