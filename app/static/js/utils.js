@@ -7,13 +7,13 @@ function esc(s) {
 }
 
 /* Shared currency-symbol helper. Currency is a separate preference from
-   language (set in Settings) so it doesn't get silently reset by toggling
-   ES/EN; it just defaults to match the page's own module-level `lang`
-   variable until the user explicitly picks one. Loaded on every page via
-   base.html. */
+   language (set in Settings, free text) so it doesn't get silently reset
+   by toggling ES/EN; it just defaults to match the page's own module-level
+   `lang` variable until the user explicitly sets one. Loaded on every page
+   via base.html. */
 function curr() {
   const saved = localStorage.getItem('currency');
-  if (saved === '$' || saved === 'S/.') return saved;
+  if (saved) return saved;
   return lang === 'en' ? '$' : 'S/.';
 }
 

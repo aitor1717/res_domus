@@ -449,15 +449,18 @@ def _get_notice(db_path: str, lang: str = "en") -> str | None:
         ).fetchone()
         if row:
             item, urgency, days_since = row[0], row[1], int(row[2] or 0)
-            suffix_es = f"hace {days_since} días que no lo compras."
+            # No suffix_es equivalent to "last bought N days ago" - it would
+            # need a direct object pronoun (lo/la) agreeing with the item's
+            # grammatical gender, which we don't track. Simpler to just drop
+            # the clause in Spanish than get it wrong.
             suffix_en = f"last bought {days_since} days ago."
             if urgency >= 1.0:
                 if lang == "es":
-                    return f"Te estás quedando sin {item}, {suffix_es}"
+                    return f"Te estás quedando sin {item}."
                 return f"You're about to run out of {item}, {suffix_en}"
             else:
                 if lang == "es":
-                    return f"Pronto necesitarás {item}, {suffix_es}"
+                    return f"Pronto necesitarás {item}."
                 return f"You'll need {item} soon, {suffix_en}"
     except Exception:
         pass
