@@ -8,7 +8,7 @@ This project started as a warehouse management system and was later repurposed i
 grocery manager. It's an overkill but it's a tool I actually use.
 
 The app builds and maintains a database, parses receipts, feeds a dashboard, and provides insights.
-The queries are deterministic; the thresholds are stochastic. The warehouse manager is meant to turn unstructured requests into structured calculations, and back into a readable response.
+The core queries are deterministic; the thresholds are stochastic. The warehouse manager writes queries per question but uses a fixed table allow-list and a read-only connection.
 
 The app reads photos of grocery receipts. It checks each price
 against your own purchase history, flags unusual prices, and
