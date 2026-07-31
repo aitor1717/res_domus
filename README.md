@@ -1,31 +1,33 @@
 # res_domus
 
-This project started as a warehouse inventory manager. It grew into a home
-grocery tracker.
+[![tests](https://github.com/aitor1717/res_domus/actions/workflows/tests.yml/badge.svg)](https://github.com/aitor1717/res_domus/actions/workflows/tests.yml)
 
-The app reads photos of grocery receipts. It uses computer vision to find
-the items, prices, and categories on each receipt. It checks each price
-against your own purchase history, so it can flag an unusual price. It
+## _The Affairs of the House_
+
+This project started as a warehouse management system and was later repurposed into a home
+grocery manager. It's an overkill but it's a tool I actually use.
+
+The app builds and maintains a database, parses receipts, feeds a dashboard, and provides insights.
+The queries are deterministic; the thresholds are stochastic. The warehouse manager is meant to turn unstructured requests into structured calculations, and back into a readable response.
+
+The app reads photos of grocery receipts. It checks each price
+against your own purchase history, flags unusual prices, and
 estimates how many days of stock you have left, based on how often you
-buy each item. It also includes a chat assistant. The assistant answers
-questions such as "What did I spend the most on last month?" by writing
-its own database query. It cannot read the part of the database that
-stores your API key.
-
-This is more system than a grocery list needs. The project was fun to
-build.
+buy each canonical item. It also includes a warehouse manager.
+AI assistance is broadly and rightfully disliked. A lot of work has been put into making
+this assistant not terrible. Feedback is much appreciated regarding this.
 
 ![dashboard](docs/screenshots/dashboard.png)
 
 ## What it does
 
-- **Receipt parsing**: Upload a photo. Claude Sonnet reads the items,
+- **Receipt parsing**: Upload a photo. Parses the items,
   prices, quantities, and categories into an editable table.
 - **Dashboard**: Shows spending trends by category, a monthly budget
   tracker, price history per item, and alerts for unusual prices.
-- **Stock estimates**: Flags items you are likely running low on, based
+- **Stock estimates**: Flags canonical items you are likely running low on, based
   on how often you buy them.
-- **The warehouse manager**: A chat assistant that writes its own
+- **The warehouse manager**: A chat assistant that calls
   database queries and summarizes the answer, in English or Spanish. The
   assistant can query only an approved list of tables and views. Each
   query runs on a read-only database connection, so a bad query cannot
@@ -36,8 +38,7 @@ build.
   terminal" theme.
 
 The app runs **locally**. Your data stays in a SQLite database on your
-machine. The AI features (receipt parsing and the warehouse manager) are
-**optional**. They activate only when you add your own Anthropic API key.
+machine. The AI features are **optional**. They activate only when you add your own Anthropic API key.
 
 <p float="left">
   <img src="docs/screenshots/register.png" width="49%" alt="register page" />
