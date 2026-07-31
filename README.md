@@ -43,6 +43,10 @@ machine. The AI features are optional.
   <img src="docs/screenshots/library.png" width="49%" alt="item library page" />
 </p>
 
+<p align="center">
+  <img src="docs/screenshots/upload.png" width="60%" alt="upload receipt" />
+</p>
+
 ## Quick start (Docker)
 
 This method needs [Docker](https://www.docker.com/). Use Docker Desktop
