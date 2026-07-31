@@ -1,5 +1,5 @@
 # res_domus
-## _Affairs of the House_
+# _Affairs of the House_
 
 [![tests](https://github.com/aitor1717/res_domus/actions/workflows/tests.yml/badge.svg)](https://github.com/aitor1717/res_domus/actions/workflows/tests.yml)
 
