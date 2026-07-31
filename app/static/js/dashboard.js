@@ -68,6 +68,16 @@ chart = new Chart(ctx, {
             const labels = [tt.legTotal, tt.legGroceries, tt.legMeat];
             return ` ${labels[c.datasetIndex] || c.dataset.label}  ${curr()}${c.parsed.y.toFixed(0)}`;
           },
+          // total is every non-delivery category, not just groceries + meat
+          // (e.g. Produce, Household) - without this line the tooltip looks
+          // like groceries + meat + delivery should sum to total, and they
+          // silently don't. See api/dashboard.py's chart().
+          afterBody: items => {
+            if (!items.length) return '';
+            const tt = T[lang] || T.en;
+            const other = ((chartData[currentPeriod] || {}).other || [])[items[0].dataIndex] || 0;
+            return ` ${tt.legOther}  ${curr()}${other.toFixed(0)}`;
+          },
         },
       },
     },
@@ -384,7 +394,7 @@ const T = {
   es: {
     budget: 'presupuesto', chart: 'historial de gastos',
     legTotal: 'total', legDelivery: 'delivery + servicio',
-    legGroceries: 'abarrotes', legMeat: 'carnes',
+    legGroceries: 'abarrotes', legMeat: 'carnes', legOther: 'otros',
     needed: 'por agotar',
     bycat: 'mayor gasto',
     periodLabels: { '30d': 'este mes', '90d': 'últ. 90d', 'all': 'todo' },
@@ -402,7 +412,7 @@ const T = {
   en: {
     budget: 'budget', chart: 'spending history',
     legTotal: 'total', legDelivery: 'delivery + service',
-    legGroceries: 'groceries', legMeat: 'meat',
+    legGroceries: 'groceries', legMeat: 'meat', legOther: 'other',
     needed: 'running low',
     bycat: 'top spend',
     periodLabels: { '30d': 'this month', '90d': 'last 90d', 'all': 'all time' },

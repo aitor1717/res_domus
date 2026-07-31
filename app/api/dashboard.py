@@ -223,6 +223,13 @@ def chart():
         delivery.append(r[5] or 0)
 
     delivery_above = [t + d for t, d in zip(totals, delivery)]
+    # total is every non-delivery category, not just groceries + meat (e.g.
+    # Produce, Household) - without this, the tooltip lists total alongside
+    # groceries/meat/delivery in a way that looks like they should sum to
+    # total, and they silently don't. Surfacing the remainder as its own
+    # line makes the numbers reconcile without hardcoding every other
+    # category name the way groceries/meat already do.
+    other = [round(t - g - m, 2) for t, g, m in zip(totals, groceries, meat)]
 
     anom_idx = None
     anom_label_es = anom_label_en = ""
@@ -240,6 +247,7 @@ def chart():
         "total":         totals,
         "groceries":     groceries,
         "meat":          meat,
+        "other":         other,
         "delivery":      delivery,
         "deliveryAbove": delivery_above,
         "anomalyIdx":    anom_idx,
