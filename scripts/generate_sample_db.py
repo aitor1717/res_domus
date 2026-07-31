@@ -21,6 +21,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "app"))
 from parser.build_db import SCHEMA, VIEWS
+from db_settings import set_setting
 
 PRICE_NOISE = 0.12   # ±12% price jitter per purchase
 QTY_NOISE   = 0.18   # ±18% quantity jitter per purchase
@@ -422,6 +423,11 @@ def main():
     rng  = random.Random(args.seed)
     rows = generate(template_path, aux_path, args.months, rng)
     write_db(db_path, rows, rng)
+    # Flags this DB the same way app/scripts/seed_demo_data.py does, so a
+    # live deployment's app.py rebase_demo_dates() keeps it from going
+    # stale - without this flag, a demo instance's dates would silently
+    # freeze at generation time (see CLAUDE.md's Demo data freshness).
+    set_setting(str(db_path), "demo_data", "1")
 
     cats = {}
     for r in rows:

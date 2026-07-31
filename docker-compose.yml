@@ -19,6 +19,10 @@ services:
       - INSTANCE_LABEL=${INSTANCE_LABEL:-res domus}
       - BASIC_AUTH_USER=${BASIC_AUTH_USER:-}
       - BASIC_AUTH_PASS=${BASIC_AUTH_PASS:-}
+      # Set DEMO_MODE=1 in .env to run *this* instance read-only with sample
+      # data - e.g. for a public demo before you've set up your own personal
+      # instance. Defaults off (0), same as before this var existed.
+      - DEMO_MODE=${DEMO_MODE:-0}
     restart: unless-stopped
 
   # Optional reverse proxy for automatic HTTPS — only needed if you're exposing

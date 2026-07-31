@@ -76,12 +76,26 @@ nano .env   # fill in ANTHROPIC_API_KEY, SECRET_KEY, BASIC_AUTH_USER/PASS, DOMAI
 ```
 
 Set `DOMAIN` to your DuckDNS hostname, for example `resdomus.duckdns.org`.
-Set `BASIC_AUTH_USER` and `BASIC_AUTH_PASS` too. These are **required**
-once the app is reachable on the public internet. If you leave them
-blank, the app disables auth entirely (see the README's Security and
-privacy section). Caddy requests a Let's Encrypt certificate for `DOMAIN`
-automatically on first start. This requires ports 80 and 443 to be
-reachable, set up in step 2.
+Caddy requests a Let's Encrypt certificate for `DOMAIN` automatically on
+first start. This requires ports 80 and 443 to be reachable, set up in
+step 2.
+
+Set `BASIC_AUTH_USER` and `BASIC_AUTH_PASS` too, **unless** this instance
+is a public demo you want anyone to open without a password. In that
+case leave both blank, and instead set `DEMO_MODE=1`. `DEMO_MODE` blocks
+every write and swaps the chat assistant for a static response, so a
+visitor can look around but never change anything or spend your API
+budget - see the README's "What it does" section for the full list of
+what it disables. Don't combine a blank `ANTHROPIC_API_KEY` in this mode
+either; there's no reason to give a public instance a real key at all.
+
+If this is a demo instance, seed it with sample data instead of your own:
+
+```bash
+python3 scripts/generate_sample_db.py --lang en --db data/res_domus.db
+```
+
+(skip the `init_db.py` / `seed_demo_data.py` step below in that case).
 
 ## 6. Run it
 
@@ -102,7 +116,8 @@ docker compose logs -f
 ```
 
 Visit `https://<your-duckdns-domain>`. You should see a valid HTTPS
-certificate and the Basic Auth prompt.
+certificate, and the Basic Auth prompt (unless this is a demo instance
+with auth left blank, in which case it opens straight to the dashboard).
 
 ## 7. Updating later
 
@@ -124,3 +139,14 @@ backup or debugging, pull it explicitly:
 ```bash
 rsync -avz <user>@<your-static-ip>:~/res_domus/data/res_domus.db ./data/res_domus.db
 ```
+
+## 8. Later: running a demo and a personal instance at the same time
+
+Steps 1-7 cover one instance - either your own data (`DEMO_MODE` unset)
+or a public demo (`DEMO_MODE=1`), on one domain. If you eventually want
+both running at once on the same VM, that needs a second Compose service
+on its own subdomain, sharing the one Caddy container via Docker's
+internal networking rather than a second host port. That's a small,
+well-contained change to `docker-compose.yml` and the `Caddyfile` - worth
+setting up when you actually need it, rather than guessing its shape
+now.
