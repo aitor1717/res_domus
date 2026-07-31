@@ -1,8 +1,7 @@
 # res_domus
+## _Affairs of the House_
 
 [![tests](https://github.com/aitor1717/res_domus/actions/workflows/tests.yml/badge.svg)](https://github.com/aitor1717/res_domus/actions/workflows/tests.yml)
-
-## _The Affairs of the House_
 
 This project started as a warehouse management system and was later repurposed into a home
 grocery manager. It's an overkill but it's a tool I actually use.
@@ -10,12 +9,11 @@ grocery manager. It's an overkill but it's a tool I actually use.
 The app builds and maintains a database, parses receipts, feeds a dashboard, and provides insights.
 The core queries are deterministic; the thresholds are stochastic. The warehouse manager writes queries per question but uses a fixed table allow-list and a read-only connection.
 
-The app reads photos of grocery receipts. It checks each price
-against your own purchase history, flags unusual prices, and
-estimates how many days of stock you have left, based on how often you
-buy each canonical item. It also includes a warehouse manager.
+It reads photos of grocery receipts, checks each price
+against purchase history, flags unusual prices, and
+estimates how many days of stock are left for canonical items. It also includes a warehouse manager.
 AI assistance is broadly and rightfully disliked. A lot of work has been put into making
-this assistant not terrible. Feedback is much appreciated regarding this.
+this assistant not terrible. Feedback is much appreciated.
 
 ![dashboard](docs/screenshots/dashboard.png)
 
@@ -37,8 +35,8 @@ this assistant not terrible. Feedback is much appreciated regarding this.
 - **Bilingual interface**: English and Spanish, with a dark "phosphor
   terminal" theme.
 
-The app runs **locally**. Your data stays in a SQLite database on your
-machine. The AI features are **optional**. They activate only when you add your own Anthropic API key.
+The app runs locally. Your data stays in a SQLite database on your
+machine. The AI features are optional.
 
 <p float="left">
   <img src="docs/screenshots/register.png" width="49%" alt="register page" />
@@ -95,7 +93,7 @@ pip install -r requirements.txt
 flask --app app run --debug
 ```
 
-## Enabling AI features (optional)
+## Enabling AI features
 
 Receipt parsing and the warehouse manager need an
 [Anthropic API key](https://console.anthropic.com/). Without a key, the
@@ -154,28 +152,3 @@ This works on `localhost`, your LAN IP, or a domain if you deploy the app
   your API key. Each query also runs on a read-only connection. These are
   two separate safety checks. A failure in one check does not defeat the
   other.
-
-## Tech stack
-
-Flask, SQLite, the Anthropic API (Claude Sonnet), Chart.js 4, vanilla
-JavaScript, Docker.
-
-## Project layout
-
-```
-app/               Flask app
-  app.py             App factory, page routes, Basic Auth gate
-  api/               Blueprints: dashboard, upload, chat, items, settings
-  parser/            Receipt parsing (Claude) + DB import + SQL views
-  templates/, static/  Frontend (Jinja + vanilla JS + Chart.js)
-  scripts/           Demo data generator, empty-DB initializer
-data/              Gitignored runtime data: res_domus.db, input/, review/,
-                   archive/, output/
-docs/              GitHub Pages showcase (not part of the running app)
-```
-
-## Advanced: deploying to a server
-
-To reach your instance from outside your home network, for example from
-your phone, see [DEPLOY.md](DEPLOY.md). It covers a Docker and Caddy
-setup with automatic HTTPS, on a free-tier VPS.
