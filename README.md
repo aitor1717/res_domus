@@ -42,7 +42,9 @@ machine. The AI features are optional.
 
 ![item library](docs/screenshots/library.png)
 
-![upload receipt](docs/screenshots/upload.png)
+<p align="center">
+  <img src="docs/screenshots/upload.png" width="60%" alt="upload receipt" />
+</p>
 
 ## Quick start (Docker)
 
