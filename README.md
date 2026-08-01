@@ -38,14 +38,11 @@ this assistant not terrible. Feedback is much appreciated.
 The app runs locally. Your data stays in a SQLite database on your
 machine. The AI features are optional.
 
-<p float="left">
-  <img src="docs/screenshots/register.png" width="49%" alt="register page" />
-  <img src="docs/screenshots/library.png" width="49%" alt="item library page" />
-</p>
+![register](docs/screenshots/register.png)
 
-<p align="center">
-  <img src="docs/screenshots/upload.png" width="60%" alt="upload receipt" />
-</p>
+![item library](docs/screenshots/library.png)
+
+![upload receipt](docs/screenshots/upload.png)
 
 ## Quick start (Docker)
 
