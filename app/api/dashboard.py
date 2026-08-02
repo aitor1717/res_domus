@@ -106,18 +106,28 @@ def budget():
     today = date.today()
     data["days_remaining"] = calendar.monthrange(today.year, today.month)[1] - today.day
 
-    # Rolling 30-day spend vs the same 18-month baseline average used for the
-    # budget bar — doesn't reset at the calendar month boundary like
-    # spent_this_month/effective_budget do, so it reads as a continuous trend.
+    # Last 30 days vs the 30 days immediately before that - a clean,
+    # non-overlapping adjacent-window comparison. Deliberately not the
+    # 18-month avg_baseline used for the budget bar above: that figure
+    # includes the current (still-accumulating) month, which mostly
+    # overlaps the last-30-days window being measured here, so spending
+    # more recently partly inflated the very baseline it was compared
+    # against - confirmed against real data to be enough to flip the sign
+    # of the result. Two adjacent 30-day windows share no days, so there's
+    # nothing left for either window to dilute.
     conn = _db()
     last_30d = conn.execute(
         "SELECT ROUND(SUM(total_price), 2) FROM purchases "
         "WHERE raw_name != 'TOTAL' AND datetime >= date('now', '-30 days')"
     ).fetchone()[0] or 0
+    prev_30d = conn.execute(
+        "SELECT ROUND(SUM(total_price), 2) FROM purchases "
+        "WHERE raw_name != 'TOTAL' AND datetime >= date('now', '-60 days') "
+        "AND datetime < date('now', '-30 days')"
+    ).fetchone()[0] or 0
     conn.close()
-    baseline = data.get("avg_baseline") or 0
     data["last_30d_spend"] = last_30d
-    data["deviation_pct"] = round((last_30d - baseline) / baseline * 100, 1) if baseline else None
+    data["deviation_pct"] = round((last_30d - prev_30d) / prev_30d * 100, 1) if prev_30d else None
     return jsonify(data)
 
 

@@ -42,6 +42,17 @@ chart = new Chart(ctx, {
         backgroundColor: 'transparent', borderWidth: 1, fill: false,
         tension: 0.42, pointRadius: 0, pointHoverRadius: 0, order: 0,
       },
+      {
+        // Not drawn - total is every non-delivery category, not just
+        // groceries + meat (e.g. Produce, Household), so without this the
+        // tooltip looked like groceries + meat + delivery should sum to
+        // total, and silently didn't. order:2.5 (between groceries and
+        // total) places its tooltip line where it reads as the remainder,
+        // right above total. See api/dashboard.py's chart().
+        label: 'other', data: [], borderColor: 'transparent',
+        backgroundColor: 'transparent', borderWidth: 0, fill: false,
+        pointRadius: 0, pointHoverRadius: 0, order: 2.5,
+      },
     ],
   },
   options: {
@@ -65,18 +76,13 @@ chart = new Chart(ctx, {
               const v = actual ? actual[c.dataIndex] : c.parsed.y;
               return ` ${tt.legDelivery}  ${curr()}${(v || 0).toFixed(0)}`;
             }
+            if (c.datasetIndex === 4) {
+              const actual = (chartData[currentPeriod] || {}).other;
+              const v = actual ? actual[c.dataIndex] : c.parsed.y;
+              return ` ${tt.legOther}  ${curr()}${(v || 0).toFixed(0)}`;
+            }
             const labels = [tt.legTotal, tt.legGroceries, tt.legMeat];
             return ` ${labels[c.datasetIndex] || c.dataset.label}  ${curr()}${c.parsed.y.toFixed(0)}`;
-          },
-          // total is every non-delivery category, not just groceries + meat
-          // (e.g. Produce, Household) - without this line the tooltip looks
-          // like groceries + meat + delivery should sum to total, and they
-          // silently don't. See api/dashboard.py's chart().
-          afterBody: items => {
-            if (!items.length) return '';
-            const tt = T[lang] || T.en;
-            const other = ((chartData[currentPeriod] || {}).other || [])[items[0].dataIndex] || 0;
-            return ` ${tt.legOther}  ${curr()}${other.toFixed(0)}`;
           },
         },
       },
@@ -202,6 +208,7 @@ async function loadChart(period) {
   chart.data.datasets[1].data = d.groceries || d.abarrotes || [];
   chart.data.datasets[2].data = d.meat || d.carnes || [];
   chart.data.datasets[3].data = d.deliveryAbove || [];
+  chart.data.datasets[4].data = d.other || [];
   chart.update('active');
 
   const lbl = d.anomalyLabel || {};
