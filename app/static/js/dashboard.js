@@ -119,17 +119,27 @@ async function loadAll() {
   scrollChat();
 }
 
-function drawRing(svgId, pct, color, label) {
+function drawRing(svgId, pct, color, label, reverse = false) {
   const svg = document.getElementById(svgId);
   if (!svg) return;
-  const size = 112, r = 46, cx = size / 2, cy = size / 2, stroke = 9;
+  // size is bigger than the visible ring (r + stroke) on purpose - the
+  // drop-shadow glow needs real margin inside the SVG's own box to
+  // finish fading before it reaches the edge, or it reads as an abrupt
+  // cutoff rather than a soft glow. r/stroke unchanged, so the ring
+  // itself is the same visual size as before.
+  const size = 132, r = 46, cx = size / 2, cy = size / 2, stroke = 9;
   const circ = 2 * Math.PI * r;
   const clamped = Math.max(0, Math.min(100, pct));
   const offset = circ * (1 - clamped / 100);
+  // reverse mirrors the fill direction around the vertical axis through the
+  // center, so it grows counter-clockwise from the same 12-o'clock start
+  // point instead of clockwise - used for bidirectional metrics (e.g. the
+  // spending-deviation ring) where the sign matters, not just the magnitude.
+  const mirror = reverse ? `translate(${cx * 2} 0) scale(-1,1)` : '';
   svg.innerHTML = `
     <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="rgba(255,157,110,.14)" stroke-width="${stroke}"/>
     <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${color}" stroke-width="${stroke}" stroke-linecap="round"
-      stroke-dasharray="${circ}" stroke-dashoffset="${offset}" transform="rotate(-90 ${cx} ${cy})"
+      stroke-dasharray="${circ}" stroke-dashoffset="${offset}" transform="${mirror} rotate(-90 ${cx} ${cy})"
       style="filter:drop-shadow(0 0 5px ${color})"/>
     <text x="${cx}" y="${cy + 7}" text-anchor="middle" font-size="21" fill="#FFFBFC" font-weight="700">${label}</text>`;
 }
@@ -144,8 +154,11 @@ async function loadBudget() {
 
   const dev = d.deviation_pct;
   const devLabel = dev == null ? '—' : `${dev > 0 ? '+' : ''}${dev}%`;
-  const devColor = dev > 0 ? '#FF6F91' : '#FFE0A3';
-  drawRing('ringDeviation', dev == null ? 0 : Math.abs(dev), devColor, devLabel);
+  // Spending more than the prior 30 days is worth flagging (pink); spending
+  // less is good news, not neutral - same green as the "good stock" rings
+  // below, not the tan/gold "--green" CSS token (see design system notes).
+  const devColor = dev > 0 ? '#FF6F91' : 'rgba(100,200,140,.8)';
+  drawRing('ringDeviation', dev == null ? 0 : Math.abs(dev), devColor, devLabel, dev < 0);
 
   const spentEl = document.getElementById('ringmeta-spent');
   const daysEl  = document.getElementById('ringmeta-days');

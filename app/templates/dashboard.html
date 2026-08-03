@@ -29,6 +29,7 @@
   .ringbox .ringcap  { font-size: 10.5px; color: var(--dim2); margin-top: 7px; text-transform: uppercase; letter-spacing: .04em; }
   .ringbox .ringmeta { font-size: 12px; color: var(--dim2); margin-top: 6px; text-shadow: 0 0 4px rgba(255,157,110,.3); }
   .ringbox .ringmeta b { color: var(--bright); font-size: 13px; }
+  .ring-gauge { overflow: visible; }
   .ring-gauge text { font-family: var(--mono); font-weight: 700; }
   .curr-ring { font-size: 10px; }
 
@@ -171,12 +172,12 @@
     <div class="card-label" id="lbl-budget">budget</div>
     <div class="ringsrow">
       <div class="ringbox">
-        <svg class="ring-gauge" id="ringBudget" width="112" height="112" viewBox="0 0 112 112"></svg>
+        <svg class="ring-gauge" id="ringBudget" width="132" height="132" viewBox="0 0 132 132"></svg>
         <div class="ringcap" id="lbl-ring-budget">budget used</div>
         <div class="ringmeta" id="ringmeta-days"></div>
       </div>
       <div class="ringbox">
-        <svg class="ring-gauge" id="ringDeviation" width="112" height="112" viewBox="0 0 112 112"></svg>
+        <svg class="ring-gauge" id="ringDeviation" width="132" height="132" viewBox="0 0 132 132"></svg>
         <div class="ringcap" id="lbl-ring-dev">vs 30d avg</div>
         <div class="ringmeta" id="ringmeta-spent"></div>
       </div>
