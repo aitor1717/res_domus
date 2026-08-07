@@ -141,6 +141,14 @@ def test_stock_tier_does_not_trigger_at_4_days(client, auth_headers, empty_db):
 
 def test_anomaly_tier_triggers_within_last_7_days_when_higher_tiers_quiet(client, auth_headers, empty_db):
     conn = sqlite3.connect(empty_db)
+    # _seed_anomaly's $1000 outlier, dated 6 days ago, lands inside the
+    # *current calendar month* whenever this suite happens to run on
+    # day-of-month > 6 - with no manual budget row, that $1000 would leak
+    # into v_budget's avg_baseline fallback and could push pct_of_budget
+    # over 80%, making the budget tier fire first and mask the anomaly tier
+    # this test isolates. Pin a large, quiet manual budget so the outlier
+    # can never do that, regardless of which day the suite runs on.
+    _seed_budget(conn, pct=0, manual_budget=1_000_000.0)
     _seed_anomaly(conn, "anomaly_item", days_ago=6)
     conn.commit()
     conn.close()

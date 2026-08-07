@@ -40,11 +40,13 @@ machine. The AI features are optional.
 
 ![register](docs/screenshots/register.png)
 
+---
+
 ![item library](docs/screenshots/library.png)
 
-<p align="center">
-  <img src="docs/screenshots/upload.png" width="60%" alt="upload receipt" />
-</p>
+---
+
+![upload receipt](docs/screenshots/upload.png)
 
 ## Quick start (Docker)
 

@@ -477,11 +477,13 @@ def chat_notice():
     return jsonify({"notice": notice})
 
 
-# Placeholder — swap for real copy before publishing. Kept in both languages
-# so the response shape matches a normal answer regardless of UI language.
+RES_DOMUS_REPO_URL = "https://github.com/aitor1717/res_domus"
+
+# Kept in both languages so the response shape matches a normal answer
+# regardless of UI language.
 DEMO_CHAT_MSG = {
-    "en": "The warehouse manager isn't available in demo mode.",
-    "es": "El gestor de almacén no está disponible en modo demo.",
+    "en": f"The warehouse manager is not available in demo mode. Download the app for free at {RES_DOMUS_REPO_URL}.",
+    "es": f"El gestor de almacén no está disponible en modo demo. La aplicación se puede descargar gratis en {RES_DOMUS_REPO_URL}.",
 }
 
 
