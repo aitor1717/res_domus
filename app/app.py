@@ -86,7 +86,13 @@ def create_app():
                 shifted = rebase_demo_dates(app.config["DB_PATH"])
                 if shifted:
                     logging.info(f"Demo data was {shifted} day(s) stale — rebased dates to stay current.")
-            except sqlite3.Error:
+            except Exception:
+                # Broad on purpose: this runs both synchronously at startup and
+                # inside a daemon thread's while-True loop. A narrower except
+                # here (e.g. sqlite3.Error only) lets any other exception type
+                # kill that loop silently on its first occurrence, with nothing
+                # to restart it - the demo would then drift stale again with
+                # no error anywhere to point at.
                 logging.exception("Failed to rebase demo data dates")
 
         def _rebase_demo_loop():
