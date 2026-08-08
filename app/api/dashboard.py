@@ -106,15 +106,15 @@ def budget():
     today = date.today()
     data["days_remaining"] = calendar.monthrange(today.year, today.month)[1] - today.day
 
-    # Last 30 days vs the 30 days immediately before that - a clean,
-    # non-overlapping adjacent-window comparison. Deliberately not the
-    # 18-month avg_baseline used for the budget bar above: that figure
-    # includes the current (still-accumulating) month, which mostly
-    # overlaps the last-30-days window being measured here, so spending
-    # more recently partly inflated the very baseline it was compared
-    # against - confirmed against real data to be enough to flip the sign
-    # of the result. Two adjacent 30-day windows share no days, so there's
-    # nothing left for either window to dilute.
+    # Last 30 days vs the 30 days immediately before that: a clean,
+    # non-overlapping adjacent-window comparison. This is deliberately not
+    # the 18-month avg_baseline used for the budget bar above. avg_baseline
+    # includes the current, still-accumulating month, which mostly overlaps
+    # the last-30-days window measured here, so recent spending partly
+    # inflates the very baseline it's compared against - against real data,
+    # this was enough to flip the sign of the result. Two adjacent 30-day
+    # windows share no days, so there's nothing left for either window to
+    # dilute.
     conn = _db()
     last_30d = conn.execute(
         "SELECT ROUND(SUM(total_price), 2) FROM purchases "
@@ -173,14 +173,13 @@ def chart():
     """
     BASE = "FROM purchases WHERE raw_name != 'TOTAL' AND total_price > 0"
 
-    # Each view targets ~15 points with bucket size proportional to the period,
-    # so 30d→90d→all feel like coherent zoom-out levels of the same data.
-    # 30d and 90d share the same bucket width (2.5 days) rather than each
-    # independently targeting ~15 points - that made zooming out compress
-    # more time into the same point count, which reads as inconsistent
-    # ("resolution" silently changing). With a fixed bucket width, point
-    # count scales with the time range instead: 30d → 12 points, 90d → 36
-    # (3x, matching the 3x longer window).
+    # 30d and 90d share the same fixed bucket width (2.5 days) instead of
+    # each independently targeting ~15 points. Scaling bucket width per
+    # period made zooming out compress more time into the same point
+    # count, so the effective "resolution" silently changed between views.
+    # With a fixed bucket width, point count scales with the time range
+    # instead: 30d → 12 points, 90d → 36 (3x, matching the 3x longer
+    # window). "all" buckets by calendar month instead.
     BUCKET_DAYS = 2.5
     if period in ("30d", "90d"):
         # 30d and 90d differ only in window length - same bucket width, same
@@ -207,11 +206,11 @@ def chart():
         rows = [(r[0], fmt_label_all(r[1]), r[2], r[3], r[4], r[5]) for r in rows]
 
     # Drop a trailing bucket that's still in progress (spans days that haven't
-    # happened yet) - otherwise the most recent point on the chart reads as a
-    # sudden drop-off in spending when it's really just an incomplete window,
-    # which looks like corrupted/inconsistent data right where users look
-    # first. Only ever drops the LAST bucket, and only if more than one
-    # bucket exists (never returns an empty chart).
+    # happened yet). Otherwise the most recent point reads as a sudden
+    # drop-off in spending when it's only an incomplete window - corrupted-
+    # looking data right where users look first. Only the last bucket is
+    # ever dropped, and only if more than one bucket exists, so the chart
+    # never comes back empty.
     if len(rows) > 1 and rows[-1][0] == current_bucket:
         rows = rows[:-1]
         raw_dates = raw_dates[:-1]

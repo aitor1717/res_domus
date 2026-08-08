@@ -8,7 +8,7 @@ function esc(s) {
 
 /* Shared currency-symbol helper. Currency is a separate preference from
    language (set in Settings, free text) so it doesn't get silently reset
-   by toggling ES/EN; it just defaults to match the page's own module-level
+   by toggling ES/EN; it defaults to match the page's own module-level
    `lang` variable until the user explicitly sets one. Loaded on every page
    via base.html. */
 function curr() {
@@ -17,18 +17,18 @@ function curr() {
   return lang === 'en' ? '$' : 'S/.';
 }
 
-/* DEMO_MODE is set as a page-global in base.html; the typeof check just
-   guards pages that somehow load this before base.html's inline script has
-   run. Loaded on every page via base.html. */
+/* DEMO_MODE is set as a page-global in base.html; the typeof check guards
+   pages that load this before base.html's inline script has run. Loaded on
+   every page via base.html. */
 function isDemoMode() {
   return typeof DEMO_MODE !== 'undefined' && DEMO_MODE;
 }
 
 /* Display-only translation for the English demo dataset's item/category/
    subcategory/synonym strings when viewed in Spanish - the data itself
-   stays English (DEMO_ES_TR, loaded conditionally in base.html), this just
-   swaps what's shown. No-ops for real (non-demo) data or English UI, so a
-   real user's own data is never touched. */
+   stays English; DEMO_ES_TR (loaded conditionally in base.html) swaps only
+   what's shown. No-ops for real (non-demo) data or English UI, so a real
+   user's own data is never touched. */
 function _demoTr(map, key) {
   if (!isDemoMode() || lang !== 'es' || typeof DEMO_ES_TR === 'undefined') return null;
   return (DEMO_ES_TR[map] && DEMO_ES_TR[map][key]) || null;

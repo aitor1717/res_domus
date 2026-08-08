@@ -5,9 +5,12 @@ toggle | nav | lang toggle) let the center `nav-btns` column claim more
 than its fair share of width, squeezing `.tb-side-right` to zero and
 pushing content past the viewport edge.
 
-Fix was `min-width: 0` on `.nav-btns` (base.html) - the same pattern
-already used on `.tb-side` - so the grid can actually shrink that column
-and let its flex children wrap instead of overflowing.
+`min-width: 0` on `.nav-btns` (base.html, the same pattern already used on
+`.tb-side`) lets the nav's own flex children wrap, but doesn't by itself
+shrink the grid's unconstrained auto center track - the real fix is the
+`grid-template-columns: 1fr` override in the `max-width: 640px` media
+query, which stacks the three columns instead of asking any of them to
+shrink.
 """
 
 import pytest

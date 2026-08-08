@@ -71,12 +71,13 @@ def create_app():
         )
     else:
         # If this is demo data (flagged by seed_demo_data.py), shift its dates forward
-        # to keep the most recent trip current — otherwise a snapshot generated once
-        # drifts stale (empty Register default filter, out-of-range "this month" KPIs).
-        # Runs once at startup, then re-checks daily in the background so a long-lived
-        # process (no restarts) doesn't drift stale either — a no-op every time except
-        # the one day per week or so it's actually needed. rebase_demo_dates() itself
-        # is a no-op for real (untagged) data, so this is always cheap and safe.
+        # to keep the most recent trip current. Without this, a snapshot generated
+        # once drifts stale: Register's default filter reads empty, and "this month"
+        # KPIs fall out of range. Runs once at startup, then re-checks daily in a
+        # background thread so a long-lived process without restarts stays current
+        # too — a no-op most days, since demo data only goes stale roughly weekly.
+        # rebase_demo_dates() is itself a no-op for real, untagged data, so this call
+        # is always cheap and safe.
         from parser.build_db import rebase_demo_dates
         import threading
         import time

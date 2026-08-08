@@ -271,10 +271,10 @@ def _shape_demo(conn: sqlite3.Connection, rng: random.Random) -> None:
         # regardless of household size (a fixed target could be smaller than
         # a single item's price for a small household, or barely register
         # for a large one). The exact last-30d-vs-baseline deviation this
-        # produces doesn't matter and isn't the point - _normalize_recent_
-        # deviation() below rescales the whole window to its own target
-        # afterward regardless of what this injection landed on; only the
-        # relative shape across days (via `weights`) survives that rescale.
+        # produces doesn't matter. _normalize_recent_deviation() below
+        # rescales the whole window to its own target afterward, regardless
+        # of what this injection landed on. Only the relative shape across
+        # days (via `weights`) survives that rescale.
         baseline_row = conn.execute("SELECT avg_baseline FROM v_budget").fetchone()
         baseline = (baseline_row[0] if baseline_row and baseline_row[0] else 600.0)
         SPIKE_FRACTION = 0.12
@@ -325,7 +325,7 @@ def _shape_demo(conn: sqlite3.Connection, rng: random.Random) -> None:
 
     # Budget ring is anchored to ~74% in _normalize_recent_deviation, which
     # runs after this function and re-reads spent_this_month post-rescale -
-    # anchoring it here too would just get immediately overwritten.
+    # anchoring it here too would get immediately overwritten.
 
 
 def _normalize_recent_deviation(conn: sqlite3.Connection, rng: random.Random) -> None:
@@ -337,8 +337,8 @@ def _normalize_recent_deviation(conn: sqlite3.Connection, rng: random.Random) ->
     a believable "this period ran a bit under/over average." Scale every
     last-30-day purchase by a single factor so the actual (last_30d -
     avg_baseline) / avg_baseline deviation lands at a randomly chosen but
-    believable target instead of whatever the stochastic model produced -
-    same "engineer the outcome directly" approach already used above for the
+    believable target, instead of whatever the stochastic model produced.
+    Same "engineer the outcome directly" approach already used above for the
     budget ring percentage and the toilet-paper stock level. Preserves the
     day-to-day shape of spending, only normalizes the total.
     """

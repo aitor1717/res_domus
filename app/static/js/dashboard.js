@@ -44,9 +44,9 @@ chart = new Chart(ctx, {
       },
       {
         // Not drawn - total is every non-delivery category, not just
-        // groceries + meat (e.g. Produce, Household), so without this the
-        // tooltip looked like groceries + meat + delivery should sum to
-        // total, and silently didn't. order:2.5 (between groceries and
+        // groceries + meat (e.g. Produce, Household). Without this dataset,
+        // the tooltip lists groceries + meat + delivery as if they summed
+        // to total, when they don't. order:2.5 (between groceries and
         // total) places its tooltip line where it reads as the remainder,
         // right above total. See api/dashboard.py's chart().
         label: 'other', data: [], borderColor: 'transparent',
@@ -125,8 +125,8 @@ function drawRing(svgId, pct, color, label, reverse = false) {
   // size is bigger than the visible ring (r + stroke) on purpose - the
   // drop-shadow glow needs real margin inside the SVG's own box to
   // finish fading before it reaches the edge, or it reads as an abrupt
-  // cutoff rather than a soft glow. r/stroke unchanged, so the ring
-  // itself is the same visual size as before.
+  // cutoff rather than a soft glow. r and stroke are unchanged, so only
+  // the surrounding box grew; the ring itself stays the same visual size.
   const size = 132, r = 46, cx = size / 2, cy = size / 2, stroke = 9;
   const circ = 2 * Math.PI * r;
   const clamped = Math.max(0, Math.min(100, pct));

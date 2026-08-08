@@ -61,7 +61,7 @@ def _sanitize_rows_for_formatting(rows: list[dict]) -> list[dict]:
     answer-formatting prompt, precomputing days_of_stock_left where derivable.
     Makes the "never describe these as days" rule (see build_sql_format_prompt)
     structurally true instead of depending on the formatting model to remember
-    a prose warning — the raw fields just aren't there to mislabel."""
+    a prose warning — the raw fields aren't there to mislabel."""
     sanitized = []
     for row in rows:
         row = dict(row)
@@ -361,12 +361,12 @@ def answer_question(question: str, db_path: str, lang: str = "en", history: list
             conn.close()
 
     if sql_failed:
-        # Before giving up, check whether this was actually a purchase-logging
-        # statement ("I bought eggs...") rather than a question — covers both
-        # an explicit CANNOT_ANSWER and a SQL attempt that just didn't run
-        # (the model sometimes tries to query a logging statement instead of
-        # declining it). Cheap local gate first — only pay for the extraction
-        # call when the message actually looks purchase-related, so unrelated
+        # Before giving up, check whether this was a purchase-logging statement
+        # ("I bought eggs...") rather than a question. This covers both an
+        # explicit CANNOT_ANSWER and a SQL attempt that failed to run — the
+        # model sometimes tries to query a logging statement instead of
+        # declining it. Cheap local gate first: only pay for the extraction
+        # call when the message looks purchase-related, so unrelated
         # cannot-answer questions ("what's the weather") don't burn tokens.
         if _looks_like_purchase(question):
             draft = extract_purchase(question, db_path)
@@ -451,8 +451,8 @@ def _get_notice(db_path: str, lang: str = "en") -> str | None:
             item, urgency, days_since = row[0], row[1], int(row[2] or 0)
             # No suffix_es equivalent to "last bought N days ago" - it would
             # need a direct object pronoun (lo/la) agreeing with the item's
-            # grammatical gender, which we don't track. Simpler to just drop
-            # the clause in Spanish than get it wrong.
+            # grammatical gender, which we don't track. Simpler to drop the
+            # clause in Spanish than get it wrong.
             suffix_en = f"last bought {days_since} days ago."
             if urgency >= 1.0:
                 if lang == "es":
