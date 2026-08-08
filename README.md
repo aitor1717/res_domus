@@ -6,8 +6,10 @@ _Affairs of the House_
 This project started as a warehouse management system and was later repurposed into a home
 grocery manager. It's an overkill but it's a tool I actually use.
 
-The app builds and maintains a database, parses receipts, feeds a dashboard, and provides insights.
-The core queries are deterministic; the thresholds are stochastic. The warehouse manager writes queries per question but uses a fixed table allow-list and a read-only connection.
+The app builds and maintains a database, parses receipts, feeds a dashboard, and provides insights:
+anomaly detection with z-score thresholds, and a scope-gated NL-to-SQL assistant. The core queries
+are deterministic. The thresholds are stochastic. The warehouse manager writes a query per question,
+but only against a fixed table allow-list, over a read-only connection.
 
 It reads photos of grocery receipts, checks each price
 against purchase history, flags unusual prices, and
