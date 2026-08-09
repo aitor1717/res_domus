@@ -173,7 +173,7 @@
       </div>
     </div>
     <div class="tb-line2">
-      <a class="wordmark" href="/" style="text-decoration:none"><span class="top-tag">{{ 'domus_01 - demo' if demo_mode else instance_label }}</span></a>
+      <a class="wordmark" href="/" style="text-decoration:none"><span class="top-tag">{{ (instance_label ~ ' - demo') if demo_mode else instance_label }}</span></a>
     </div>
     {% block topbar_extra %}{% endblock %}
   </header>
