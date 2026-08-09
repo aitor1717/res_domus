@@ -72,9 +72,12 @@ def iter_months(months_back: int):
 
 
 def round_qty(quantity: float, unit: str) -> float:
-    """Real receipts report gram/ml weights as whole numbers, never 3-decimal
-    fractions ("340 g", not "355.034 g")."""
-    return round(quantity) if unit in ("g", "ml") else round(quantity, 3)
+    """kg/l are the only units bought as a naturally fractional, scale-weighed
+    amount ("0.973 kg" is a real purchase). Everything else - grams/ml
+    (a discrete pack weight), and count-based units (u, cans, rolls, latas,
+    ...) - is bought as a whole number; a real receipt never reports
+    "355.034 g" or "6.052 rolls"."""
+    return round(quantity, 3) if unit in ("kg", "l") else round(quantity)
 
 
 def make_row(tmpl: dict, aux_row: dict, dt: date, unit_price: float, quantity: float) -> dict:
