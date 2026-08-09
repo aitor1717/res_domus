@@ -65,6 +65,55 @@ def client(flask_app):
 
 
 @pytest.fixture
+def demo_client(monkeypatch):
+    """A second app instance with DEMO_MODE=1, isolated under its own
+    TEST_RUN dir - DEMO_MODE is baked into app.config at create_app() time
+    (see app.py), so an already-built flask_app can't be toggled after the
+    fact; this needs its own app build."""
+    run_name = f"pytest_{uuid.uuid4().hex[:8]}"
+    monkeypatch.setenv("TEST_RUN", run_name)
+    monkeypatch.setenv("BASIC_AUTH_USER", "")
+    monkeypatch.setenv("BASIC_AUTH_PASS", "")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "")
+    monkeypatch.setenv("DEMO_MODE", "1")
+
+    if "config" in sys.modules:
+        importlib.reload(sys.modules["config"])
+
+    from app import create_app
+    application = create_app()
+    application.config["TESTING"] = True
+
+    yield application.test_client()
+
+    shutil.rmtree(Path(application.config["DB_PATH"]).parent, ignore_errors=True)
+
+
+@pytest.fixture
+def aux_csv(flask_app):
+    """Isolates api/items.py's CSV read/write path under this test's TEST_RUN
+    dir. AUX_CSV isn't TEST_RUN-aware in config.py (only DB/uploads/review/
+    archive/chat-log are - see module docstring above) - it always points at
+    the real app/aux_items.csv, so any test hitting api/items.py must
+    repoint it explicitly or it would write into the real canonical item
+    library file checked into the repo."""
+    import csv
+    from api.items import FIELDS
+
+    path = Path(flask_app.config["DB_PATH"]).parent / "aux_items.csv"
+    with open(path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=FIELDS)
+        writer.writeheader()
+        writer.writerow({
+            "id": "1", "item": "Test Canon Item", "unit": "u",
+            "category": "Pantry", "subcategory": "Snacks",
+            "synonyms": "test item, testitem", "notes": "", "tags": "",
+        })
+    flask_app.config["AUX_CSV"] = str(path)
+    return path
+
+
+@pytest.fixture
 def auth_headers():
     creds = base64.b64encode(f"{TEST_USER}:{TEST_PASS}".encode()).decode()
     return {"Authorization": f"Basic {creds}"}

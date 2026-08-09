@@ -3,6 +3,8 @@ _Affairs of the House_
 
 [![tests](https://github.com/aitor1717/res_domus/actions/workflows/tests.yml/badge.svg)](https://github.com/aitor1717/res_domus/actions/workflows/tests.yml)
 
+**[Try the live demo →](https://resdomus.duckdns.org)** — read-only, seeded with sample data, no login required.
+
 This project started as a warehouse management system and was later repurposed into a home
 grocery manager. It's an overkill but it's a tool I actually use.
 
@@ -41,6 +43,10 @@ The app runs locally. Your data stays in a SQLite database on your
 machine. The AI features are optional.
 
 ![register](docs/screenshots/register.png)
+
+---
+
+![warehouse manager chat](docs/screenshots/chat.png)
 
 ---
 

@@ -215,13 +215,14 @@ def _shape_demo(conn: sqlite3.Connection, rng: random.Random) -> None:
     """
     After the balance pass, add two demo-specific adjustments:
 
-    1. Spending spike — inserts ~$200 of realistic purchases on June 23 and June 25
-       (17–15 days before July 10), turning week 25 (June 22–28) into a visible
-       but not dramatic peak just before the last two chart entries.
+    1. Spending spike — inserts a realistic burst of purchases 15-17 days
+       before "today" (relative, not a fixed calendar date), turning that
+       week into a visible but not dramatic peak just before the most
+       recent chart entries.
 
-    2. Manual budget — sets July's budget to spent_this_month / 1.06, so the
-       budget ring shows ~6% over, telling the story of a household that set
-       a tight July goal and has already exceeded it.
+    2. Manual budget — the actual re-anchor happens later, in
+       _normalize_recent_deviation(), since it needs to run after that
+       function's last-30-day rescale to read the final spent_this_month.
     """
     today = date.today()
     SKIP_CATS = "('Service','Servicio')"  # delivery/service category, EN and ES template variants
@@ -335,9 +336,10 @@ def _shape_demo(conn: sqlite3.Connection, rng: random.Random) -> None:
             conn.commit()
             conn.executescript(VIEWS)
 
-    # Budget ring is anchored to ~74% in _normalize_recent_deviation, which
-    # runs after this function and re-reads spent_this_month post-rescale -
-    # anchoring it here too would get immediately overwritten.
+    # Budget ring is anchored proportional to today's day-of-month in
+    # _normalize_recent_deviation, which runs after this function and
+    # re-reads spent_this_month post-rescale - anchoring it here too would
+    # get immediately overwritten.
 
 
 def _normalize_recent_deviation(conn: sqlite3.Connection, rng: random.Random) -> None:
@@ -379,12 +381,21 @@ def _normalize_recent_deviation(conn: sqlite3.Connection, rng: random.Random) ->
     )
     conn.commit()
 
-    # Re-anchor the budget ring to ~74% now that spent_this_month shifted.
-    # v_budget isn't materialized, so it already reflects the UPDATE above
-    # without needing the views dropped/recreated.
+    # Re-anchor the budget ring now that spent_this_month shifted. Target
+    # percentage scales with how far into the current month "today" is
+    # (+/-15% jitter for a believable slightly-ahead/-behind-pace story) -
+    # a FIXED target (the previous version always aimed for ~74%) reads as
+    # wildly implausible whenever this script runs early in a month: "74%
+    # of budget already spent" with three weeks still left looks like the
+    # household is about to blow through it 3x over, not like a believable
+    # pace. v_budget isn't materialized, so it already reflects the UPDATE
+    # above without needing the views dropped/recreated.
     row = conn.execute("SELECT spent_this_month FROM v_budget").fetchone()
     if row and row[0]:
-        manual_budget = round(row[0] / 0.74, 2)
+        days_in_month = calendar.monthrange(today.year, today.month)[1]
+        month_frac = today.day / days_in_month
+        target_pct = min(0.97, max(0.12, month_frac * rng.uniform(0.85, 1.15)))
+        manual_budget = round(row[0] / target_pct, 2)
         cur_month = today.strftime("%Y-%m")
         conn.execute("DELETE FROM budget WHERE month = ?", (cur_month,))
         conn.execute("INSERT INTO budget (month, manual_budget) VALUES (?, ?)",

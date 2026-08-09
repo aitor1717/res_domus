@@ -344,6 +344,19 @@ def rebase_demo_dates(db_path) -> int:
     increasingly stale the longer it sits unregenerated — e.g. Register's default 7-day
     filter reads as broken, and 'this month' KPIs/budget/stock-estimate views drift out
     of range. No-op for real data (untagged) and for demo data that's already current.
+
+    Also re-keys the budget table's row (if any - only scripts/generate_sample_db.py
+    writes one, seed_demo_data.py never touches this table) to the current
+    'YYYY-MM'. v_budget joins on an EXACT month-string match
+    (`b.month = strftime('%Y-%m', 'now')`), so unlike every other piece of
+    engineered demo realism - which lives on a purchases row and rides along
+    with the shift above for free - a manual budget override is an absolute
+    key with no shifting mechanism of its own. Left alone, it silently stops
+    matching the moment the real calendar rolls past whatever month the DB
+    was generated in, and the ring falls back to the raw baseline average
+    with no error anywhere. Confirmed live: this is exactly what would have
+    happened to the demo VM one month after this fix was written.
+
     Returns the number of days shifted (0 if none)."""
     import db_settings
 
@@ -361,6 +374,10 @@ def rebase_demo_dates(db_path) -> int:
         if delta <= 0:
             return 0
         conn.execute("UPDATE purchases SET datetime = date(datetime, ?)", (f"+{delta} days",))
+        conn.execute(
+            "UPDATE budget SET month = strftime('%Y-%m', 'now') "
+            "WHERE month != strftime('%Y-%m', 'now')"
+        )
         conn.commit()
         return delta
     finally:

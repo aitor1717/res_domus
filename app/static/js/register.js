@@ -19,6 +19,12 @@ const RT = {
 };
 function t(key) { return (RT[lang] || RT.en)[key] || key; }
 
+function demoBlock() {
+  const el = document.getElementById('regStatus');
+  el.className = 'status-msg err';
+  el.textContent = t('demoBlocked');
+}
+
 // Override base setLang to also handle register-page specifics
 window.setLang = function(l) {
   lang = l;
@@ -142,7 +148,7 @@ async function saveEntry() {
     source:           document.getElementById('fSource').value.trim() || null,
   };
   if (!payload.raw_name) { document.getElementById('fRawName').focus(); return; }
-  if (isDemoMode()) { alert(t('demoBlocked')); return; }
+  if (isDemoMode()) { demoBlock(); return; }
 
   const res = await fetch(id ? `/api/register/entries/${id}` : '/api/register/entries', {
     method: id ? 'PATCH' : 'POST',
@@ -158,7 +164,7 @@ async function saveEntry() {
 }
 
 async function deleteEntry(id) {
-  if (isDemoMode()) { alert(t('demoBlocked')); return; }
+  if (isDemoMode()) { demoBlock(); return; }
   if (!confirm(t('deleteConfirm'))) return;
   const res = await fetch(`/api/register/entries/${id}`, { method: 'DELETE' });
   if (!res.ok) { alert(t('saveError')); return; }

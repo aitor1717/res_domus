@@ -31,6 +31,12 @@ const IT = {
 
 function t(key) { return (IT[lang] || IT.en)[key] || key; }
 
+function demoBlock() {
+  const el = document.getElementById('itemsStatus');
+  el.className = 'status-msg err';
+  el.textContent = t('demoBlocked');
+}
+
 // Override base setLang to also handle items-page specifics
 window.setLang = function(l) {
   lang = l;
@@ -116,7 +122,7 @@ async function saveItem() {
     tags:        document.getElementById('fTags').value.trim(),
   };
   if (!payload.item) { document.getElementById('fItem').focus(); return; }
-  if (isDemoMode()) { alert(t('demoBlocked')); return; }
+  if (isDemoMode()) { demoBlock(); return; }
 
   const url = id ? `/api/items/${id}` : '/api/items';
   const method = id ? 'PATCH' : 'POST';
@@ -134,7 +140,7 @@ async function saveItem() {
 }
 
 async function deleteItem(id) {
-  if (isDemoMode()) { alert(t('demoBlocked')); return; }
+  if (isDemoMode()) { demoBlock(); return; }
   if (!confirm(t('deleteConfirm'))) return;
   const res = await fetch(`/api/items/${id}`, { method: 'DELETE' });
   if (!res.ok) { alert(t('saveError')); return; }
