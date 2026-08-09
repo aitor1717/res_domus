@@ -113,7 +113,7 @@ def build_trips(items):
             total_price = round(unit_price * qty, 2)
             rows.append({
                 "raw_name": it["item"] or it["id"],
-                "matched_id": it["id"],
+                "matched_id": it["item"] or it["id"],
                 "matched_category": it["category"],
                 "matched_subcategory": it["subcategory"],
                 "tags": it["tags"],

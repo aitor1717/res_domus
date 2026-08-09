@@ -71,7 +71,16 @@ def iter_months(months_back: int):
             m, y = 1, y + 1
 
 
+def round_qty(quantity: float, unit: str) -> float:
+    """Real receipts report gram/ml weights as whole numbers, never 3-decimal
+    fractions ("340 g", not "355.034 g")."""
+    return round(quantity) if unit in ("g", "ml") else round(quantity, 3)
+
+
 def make_row(tmpl: dict, aux_row: dict, dt: date, unit_price: float, quantity: float) -> dict:
+    # Round before deriving total_price so unit_price = total_price / quantity
+    # still holds exactly on the stored, rounded quantity.
+    quantity = round_qty(quantity, tmpl["unit"])
     return {
         "raw_name":            tmpl["item"],
         "matched_id":          tmpl["item"],   # item NAME, not numeric id
@@ -79,7 +88,7 @@ def make_row(tmpl: dict, aux_row: dict, dt: date, unit_price: float, quantity: f
         "matched_subcategory": aux_row.get("subcategory", ""),
         "tags":                aux_row.get("tags", ""),
         "unit":                tmpl["unit"],
-        "quantity":            round(quantity, 3),
+        "quantity":            quantity,
         "unit_price":          round(unit_price, 4),
         "total_price":         round(unit_price * quantity, 2),
         "source":              tmpl["store"],
@@ -242,7 +251,7 @@ def _shape_demo(conn: sqlite3.Connection, rng: random.Random) -> None:
                 break
             mid, cat, subcat, tags, unit, source, payment, notes, avg_p, avg_q = row
             price = avg_p * (1 + rng.uniform(-0.06, 0.06))
-            qty   = avg_q * (1 + rng.uniform(-0.08, 0.08))
+            qty   = round_qty(avg_q * (1 + rng.uniform(-0.08, 0.08)), unit)
             total = round(price * qty, 2)
             conn.execute(INSERT_SQL, {
                 "raw_name":            mid,
@@ -251,7 +260,7 @@ def _shape_demo(conn: sqlite3.Connection, rng: random.Random) -> None:
                 "matched_subcategory": subcat,
                 "tags":                tags,
                 "unit":                unit,
-                "quantity":            round(qty, 3),
+                "quantity":            qty,
                 "unit_price":          round(price, 4),
                 "total_price":         total,
                 "source":              source or "Supermarket",
