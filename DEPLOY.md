@@ -58,6 +58,9 @@ copy it to the VM directly instead:
 
 ```bash
 rsync -avz --exclude .venv --exclude __pycache__ --exclude .git --exclude data \
+  --exclude personal --exclude archive --exclude CLAUDE.md --exclude .claude \
+  --exclude 'audit-report-*.html' --exclude .pytest_cache --exclude app/config.py \
+  --exclude .env \
   /path/to/res_domus/ <user>@<your-static-ip>:~/res_domus/
 ```
 
@@ -65,6 +68,14 @@ This command excludes `data/` on purpose, even on the first copy. Run
 `app/scripts/init_db.py` (or `seed_demo_data.py` for sample data) on the
 VM itself in step 6 instead. If you sync `data/` from your machine, it
 overwrites whatever the VM already has, without warning.
+
+The other excludes matter too, on a repeat sync: `personal/`, `archive/`,
+`CLAUDE.md`, and stray `audit-report-*.html` files are gitignored local-only
+material (personal notes, design mockups, audit history) with no reason to
+ever leave your machine, and `.env` / `app/config.py` hold your live
+secrets (API keys, Basic Auth credentials, `SECRET_KEY`) — syncing either
+one from your machine would silently overwrite whatever the VM already has
+configured for itself.
 
 ## 5. Configure secrets
 
@@ -124,6 +135,9 @@ with auth left blank, in which case it opens straight to the dashboard).
 ```bash
 # From your machine, after making changes locally. data/ is excluded every time.
 rsync -avz --exclude .venv --exclude __pycache__ --exclude .git --exclude data \
+  --exclude personal --exclude archive --exclude CLAUDE.md --exclude .claude \
+  --exclude 'audit-report-*.html' --exclude .pytest_cache --exclude app/config.py \
+  --exclude .env \
   /path/to/res_domus/ <user>@<your-static-ip>:~/res_domus/
 
 # On the VM:
