@@ -16,6 +16,7 @@ but only against a fixed table allow-list, over a read-only connection.
 It reads photos of grocery receipts, checks each price
 against purchase history, flags unusual prices, and
 estimates how many days of stock are left for canonical items. It also includes a warehouse manager.
+
 AI assistance is broadly and rightfully disliked. A lot of work has been put into making
 this assistant not terrible. Feedback is much appreciated.
 
