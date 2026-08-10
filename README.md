@@ -46,10 +46,6 @@ machine. The AI features are optional.
 
 ---
 
-![warehouse manager chat](docs/screenshots/chat.png)
-
----
-
 ![item library](docs/screenshots/library.png)
 
 ---
