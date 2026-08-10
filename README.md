@@ -3,7 +3,7 @@ _Affairs of the House_
 
 [![tests](https://github.com/aitor1717/res_domus/actions/workflows/tests.yml/badge.svg)](https://github.com/aitor1717/res_domus/actions/workflows/tests.yml)
 
-**[Try the live demo →](https://resdomus.duckdns.org)** — read-only, seeded with sample data, no login required.
+**Live demo: [resdomus.duckdns.org](https://resdomus.duckdns.org)**
 
 This project started as a warehouse management system and was later repurposed into a home
 grocery manager. It's an overkill but it's a tool I actually use.
