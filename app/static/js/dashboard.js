@@ -212,7 +212,7 @@ function renderPctDelta(elId, val) {
 }
 
 async function loadChart(period) {
-  const d = await fetch(`/api/chart?period=${period}`).then(r => r.json());
+  const d = await fetch(`/api/chart?period=${period}&lang=${lang}`).then(r => r.json());
   chartData[period] = d;
   if (period !== currentPeriod) return;
 

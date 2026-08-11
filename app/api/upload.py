@@ -10,6 +10,7 @@ POST /api/upload/retry-parse  → re-runs parse with override note
 
 import json
 import queue
+import shutil
 import threading
 import time
 import uuid
@@ -42,9 +43,38 @@ NO_KEY_MSG = (
 )
 
 # Per-session state: sid → {sse_queue, date_queue, date_confirmed, retry_queue,
-#                            images, group_name, items, order_date}
+#                            images, group_name, group_dir, items, order_date, created_at}
 _sessions: dict[str, dict] = {}
 _sessions_lock = threading.Lock()
+
+# Generously above the 5-minute date-confirmation timeout plus a realistic
+# parse duration - a session with no parsed items yet only outlives this if
+# it was abandoned (tab closed, browser crash) before ever reaching the
+# review step.
+SESSION_TTL_SECONDS = 30 * 60
+
+# Once a session has parsed items, the user is looking at an editable review
+# table with no UI timeout - a real review can legitimately take much longer
+# than SESSION_TTL_SECONDS (lunch, a call, an errand), and sweeping it on the
+# same short clock would delete the session (and rmtree its images) out from
+# under an in-progress review: confirm-parse then 404s, losing the parsed
+# items plus the Anthropic call spent producing them. Reviewing sessions get
+# a much longer grace period instead - still bounded, just not on the same
+# clock as a session that never made it past date confirmation.
+REVIEWING_SESSION_TTL_SECONDS = 6 * 60 * 60
+
+
+def _sweep_expired_sessions() -> None:
+    now = time.time()
+    with _sessions_lock:
+        expired_sids = [
+            sid for sid, sess in _sessions.items()
+            if now - sess.get("created_at", now) >
+                (REVIEWING_SESSION_TTL_SECONDS if sess.get("items") is not None else SESSION_TTL_SECONDS)
+        ]
+        expired = [_sessions.pop(sid) for sid in expired_sids]
+    for sess in expired:
+        shutil.rmtree(sess["group_dir"], ignore_errors=True)
 
 
 def _session(sid: str) -> dict | None:
@@ -154,6 +184,7 @@ def upload_files():
 
     upload_dir = Path(current_app.config["UPLOAD_DIR"])
     upload_dir.mkdir(parents=True, exist_ok=True)
+    _sweep_expired_sessions()
 
     sid = uuid.uuid4().hex
     group_name = f"upload_{sid[:8]}"
@@ -180,8 +211,10 @@ def upload_files():
             "retry_queue":    queue.Queue(),
             "images":         saved,
             "group_name":     group_name,
+            "group_dir":      group_dir,
             "items":          None,
             "order_date":     None,
+            "created_at":     time.time(),
         }
 
     app = current_app._get_current_object()
@@ -220,7 +253,12 @@ def confirm_parse():
     data = request.get_json(force=True)
     sid = data.get("session_id")
     items = data.get("items")  # edited items from review table
-    sess = _session(sid)
+    # Claimed (popped) immediately rather than just looked up, so a
+    # concurrent sweep can never delete this session's group_dir out from
+    # under the save/import/archive pipeline below - the two are now
+    # mutually exclusive over the same dict entry instead of racing on it.
+    with _sessions_lock:
+        sess = _sessions.pop(sid, None)
     if not sess:
         return jsonify({"error": "session not found"}), 404
 
@@ -246,9 +284,6 @@ def confirm_parse():
             Path(current_app.config["ARCHIVE_DIR"]),
             Path(current_app.config["UPLOAD_DIR"]),
         )
-
-    with _sessions_lock:
-        _sessions.pop(sid, None)
 
     return jsonify({**result, "csv": csv_path.name})
 

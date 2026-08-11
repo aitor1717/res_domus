@@ -56,6 +56,21 @@ def set_api_key():
     return jsonify({"ok": True, "configured": bool(key)})
 
 
+# CSV/formula-injection guard for the xlsx export: raw_name and source
+# originate from Claude's OCR read of a photographed receipt (or free-text
+# chat purchase logging), not a trusted internal source. A cell value
+# starting with one of these characters is a formula trigger in Excel; the
+# standard mitigation (OWASP) is a leading single quote, which Excel renders
+# as literal text instead of evaluating it.
+_FORMULA_TRIGGER_CHARS = ("=", "+", "-", "@")
+
+
+def _sanitize_cell(val):
+    if isinstance(val, str) and val.startswith(_FORMULA_TRIGGER_CHARS):
+        return "'" + val
+    return val
+
+
 @bp.get("/export")
 def export_xlsx():
     import openpyxl
@@ -86,7 +101,7 @@ def export_xlsx():
 
     for r, row in enumerate(rows, 2):
         for c, val in enumerate(row, 1):
-            ws.cell(row=r, column=c, value=val)
+            ws.cell(row=r, column=c, value=_sanitize_cell(val))
 
     col_widths = [14, 28, 22, 18, 7, 12, 12, 18]
     for i, w in enumerate(col_widths, 1):

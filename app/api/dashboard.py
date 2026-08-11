@@ -13,6 +13,13 @@ bp = Blueprint("dashboard", __name__, url_prefix="/api")
 DELIVERY_CATEGORIES = {"Delivery", "Courier", "Servicio", "Service"}
 _DELIVERY_SQL_LIST = "(" + ",".join(f"'{c}'" for c in sorted(DELIVERY_CATEGORIES)) + ")"
 
+# Shared by chart()'s month-abbreviation labels and recent_orders()'s
+# date_label - one source per language instead of each endpoint keeping its
+# own copy. MES_EN is calendar.month_abbr's own list rather than a hand-typed
+# one; no locale.setlocale call anywhere in this app, so it's always English.
+MES_ES = ['', 'ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
+MES_EN = list(calendar.month_abbr)
+
 
 def _db():
     return sqlite3.connect(current_app.config["DB_PATH"])
@@ -135,31 +142,30 @@ def budget():
 def chart():
     from flask import request
     period = request.args.get("period", "30d")
+    lang = request.args.get("lang", "es")
     conn = _db()
 
-    MES = ['','ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic']
+    MES = MES_EN if lang == "en" else MES_ES
 
-    def fmt_label_weekly(iso_date):
+    def fmt_label_weekly(iso_date, months):
         try:
             from datetime import datetime as _dt
             d = _dt.fromisoformat(iso_date)
-            return f"{d.day:02d} {MES[d.month]}"
+            return f"{d.day:02d} {months[d.month]}"
         except Exception:
             return iso_date or ''
 
-    def fmt_label_monthly(iso_month):
+    def fmt_label_all(iso_month, months):
         try:
             parts = (iso_month or '').split('-')
-            return MES[int(parts[1])] if len(parts) >= 2 else iso_month
+            return f"{months[int(parts[1])]} {parts[0]}" if len(parts) >= 2 else iso_month
         except Exception:
             return iso_month or ''
 
-    def fmt_label_all(iso_month):
-        try:
-            parts = (iso_month or '').split('-')
-            return f"{MES[int(parts[1])]} {parts[0]}" if len(parts) >= 2 else iso_month
-        except Exception:
-            return iso_month or ''
+    # Picked once per request and reused for both the row labels below and
+    # the anomaly label further down, instead of re-testing `period` a
+    # second time in each place.
+    fmt_label = fmt_label_weekly if period in ("30d", "90d") else fmt_label_all
 
     DEL = _DELIVERY_SQL_LIST
     GROC = "('Abarrotes','Pantry')"
@@ -193,7 +199,7 @@ def chart():
         """).fetchall()
         current_bucket = conn.execute(f"SELECT CAST(julianday('now') / {BUCKET_DAYS} AS INTEGER)").fetchone()[0]
         raw_dates = [r[1] for r in rows]
-        rows = [(r[0], fmt_label_weekly(r[1]), r[2], r[3], r[4], r[5]) for r in rows]
+        rows = [(r[0], fmt_label(r[1], MES), r[2], r[3], r[4], r[5]) for r in rows]
     else:  # all — monthly buckets → ~14 points
         rows = conn.execute(f"""
             SELECT strftime('%Y-%m', datetime) AS bucket,
@@ -203,7 +209,7 @@ def chart():
         """).fetchall()
         current_bucket = date.today().strftime("%Y-%m")  # no row data involved, no need for a DB round trip
         raw_dates = [r[1] for r in rows]
-        rows = [(r[0], fmt_label_all(r[1]), r[2], r[3], r[4], r[5]) for r in rows]
+        rows = [(r[0], fmt_label(r[1], MES), r[2], r[3], r[4], r[5]) for r in rows]
 
     # Drop a trailing bucket that's still in progress (spans days that haven't
     # happened yet). Otherwise the most recent point reads as a sudden
@@ -240,6 +246,10 @@ def chart():
     # category name the way groceries/meat already do.
     other = [round(t - g - m, 2) for t, g, m in zip(totals, groceries, meat)]
 
+    # anom_label_es/en are built independently of the `lang` param (and of
+    # the single-language `labels` array above) via explicit MES_ES/MES_EN
+    # arguments to the same `fmt_label` picked earlier, so both variants stay
+    # correct regardless of which language the request happened to ask for.
     anom_idx = None
     anom_label_es = anom_label_en = ""
     if anomaly_row:
@@ -247,8 +257,8 @@ def chart():
         for i, raw_date in enumerate(raw_dates):
             if str(raw_date or "")[:7] == anom_month:
                 anom_idx = i
-                anom_label_es = f"anomalia · {labels[i]}"
-                anom_label_en = f"anomaly · {labels[i]}"
+                anom_label_es = f"anomalia · {fmt_label(raw_date, MES_ES)}"
+                anom_label_en = f"anomaly · {fmt_label(raw_date, MES_EN)}"
                 break
 
     return jsonify({
@@ -400,8 +410,7 @@ def recent_orders():
         try:
             from datetime import datetime as dt
             d = dt.fromisoformat(row["datetime"])
-            MES = ["","ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"]
-            row["date_label"] = f"{d.day:02d} {MES[d.month]}"
+            row["date_label"] = f"{d.day:02d} {MES_ES[d.month]}"
         except Exception:
             row["date_label"] = row["datetime"]
 

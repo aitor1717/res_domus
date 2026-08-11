@@ -54,3 +54,30 @@ def test_chart_all_period_finds_anomaly_bucket(client, auth_headers, flask_app):
     assert "mar" in body["labels"][body["anomalyIdx"]].lower()
     assert "2026" in body["anomalyLabel"]["en"]
     assert "anomaly" in body["anomalyLabel"]["en"]
+
+
+def test_chart_labels_respect_lang_param(client, auth_headers, flask_app):
+    """Regression for the 2026-08-11 audit finding: /api/chart's month labels
+    were hardcoded Spanish regardless of the UI's ES/EN toggle, and the
+    endpoint didn't even accept a `lang` param. `lang=en` must now produce
+    English month abbreviations (both in the plain `labels` array and in
+    `anomalyLabel.en`), and the default (no `lang` passed) must stay Spanish
+    so every pre-existing lang-agnostic assertion in this suite keeps
+    matching real ES output rather than happening to pass by coincidence
+    (English "Mar" and Spanish "mar" collide, so that overlap alone wasn't
+    proof the fix worked)."""
+    _seed_anomaly(flask_app.config["DB_PATH"])
+
+    resp_es = client.get("/api/chart?period=all", headers=auth_headers)
+    resp_en = client.get("/api/chart?period=all&lang=en", headers=auth_headers)
+    body_es, body_en = resp_es.get_json(), resp_en.get_json()
+
+    assert any("ene" in lbl.lower() or "jul" in lbl.lower() or "mar" in lbl.lower()
+               for lbl in body_es["labels"])
+    assert any("Jan" in lbl or "Jul" in lbl for lbl in body_en["labels"])
+    assert not any("ene" in lbl for lbl in body_en["labels"])
+
+    assert "anomalia" in body_es["anomalyLabel"]["es"]
+    assert "anomaly" in body_en["anomalyLabel"]["en"]
+    assert "Mar" in body_en["anomalyLabel"]["en"]
+    assert "mar " in (body_es["anomalyLabel"]["es"] + " ").lower()

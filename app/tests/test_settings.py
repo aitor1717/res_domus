@@ -70,6 +70,38 @@ def test_export_xlsx_returns_spreadsheet(client, auth_headers, seeded_db):
     assert resp.data[:2] == b"PK"  # xlsx is a zip archive
 
 
+def test_export_xlsx_neutralizes_formula_injection(client, auth_headers, empty_db):
+    """Regression for the 2026-08-11 audit finding: raw_name/source come from
+    Claude's OCR read of a photographed receipt, not a trusted internal
+    source. A value starting with =/+/-/@ must not reach the spreadsheet as
+    a live formula - openpyxl auto-detects a leading "=" as a formula type
+    only when the raw string starts with it, so this also checks the cell's
+    data_type, not just its displayed text."""
+    import io
+    import openpyxl
+    from conftest import insert_purchase
+
+    conn = sqlite3.connect(empty_db)
+    insert_purchase(
+        conn, raw_name="=cmd|'/c calc'!A1", source="@SUM(1,1)",
+        matched_id="formula_test", datetime="2026-01-05",
+    )
+    conn.commit()
+    conn.close()
+
+    resp = client.get("/api/settings/export", headers=auth_headers)
+    assert resp.status_code == 200
+
+    wb = openpyxl.load_workbook(io.BytesIO(resp.data))
+    ws = wb.active
+    row = next(r for r in ws.iter_rows(min_row=2) if r[1].value and "cmd" in str(r[1].value))
+    raw_name_cell, source_cell = row[1], row[7]
+
+    assert raw_name_cell.data_type != "f"  # not treated as a live formula
+    assert raw_name_cell.value.startswith("'=")
+    assert source_cell.value.startswith("'@")
+
+
 def test_reimport_with_no_csvs_is_a_noop(client, auth_headers, empty_db):
     resp = client.post("/api/settings/reimport", headers=auth_headers)
     assert resp.status_code == 200
