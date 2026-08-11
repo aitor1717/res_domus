@@ -10,6 +10,8 @@ from collections import defaultdict
 from datetime import date
 from pathlib import Path
 
+from csv_safety import desanitize_cell
+
 DEDUP_COLS = ("matched_id", "datetime", "quantity", "total_price")
 
 SCHEMA = """
@@ -253,7 +255,10 @@ def _build_dedup_key(row: dict) -> tuple:
 
 def _import_csv(conn: sqlite3.Connection, path: Path, existing: set[tuple]) -> tuple[int, int, int]:
     with open(path, newline="", encoding="utf-8") as f:
-        rows = list(csv.DictReader(f))
+        # review/*.csv is written with a formula-injection guard (see
+        # csv_safety.py) - undo it here so a protective leading quote never
+        # reaches the database.
+        rows = [{k: desanitize_cell(v) for k, v in r.items()} for r in csv.DictReader(f)]
     inserted = skipped_total = skipped_dup = 0
     for row in rows:
         if _is_total_row(row):

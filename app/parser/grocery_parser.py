@@ -13,6 +13,7 @@ import time
 from datetime import datetime, date, timedelta
 from pathlib import Path
 
+from csv_safety import desanitize_cell, sanitize_cell
 from parser.prompts import build_parser_system, build_parser_user
 
 IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
@@ -108,6 +109,10 @@ def load_canonical_items(csv_path: Path) -> list[dict]:
         return items
     with open(csv_path, newline="", encoding="utf-8") as f:
         for row in csv.DictReader(f):
+            # aux_items.csv is written with a formula-injection guard (see
+            # csv_safety.py) - undo it here so a protective leading quote
+            # never reaches Claude's item-matching prompt.
+            row = {k: desanitize_cell(v) for k, v in row.items()}
             synonyms_raw = row.get("synonyms", "") or ""
             synonyms = [s.strip() for s in synonyms_raw.replace(";", ",").split(",") if s.strip()]
             name = (row.get("item") or row.get("id") or "").strip()
@@ -278,7 +283,16 @@ def save_review(
     with open(csv_path, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=CSV_FIELDS, extrasaction="ignore")
         writer.writeheader()
-        writer.writerows(items + [_make_total_row(items)])
+        # Formula-injection guard (see csv_safety.py): raw_name/source/etc.
+        # can carry Claude's OCR read of a photographed receipt, not
+        # trusted internal data. Sanitized on copies, not `items` itself -
+        # the caller's list is still used elsewhere (dedup, the frontend
+        # review table) and must keep the unmodified values.
+        rows = [
+            {k: sanitize_cell(v) for k, v in row.items()}
+            for row in items + [_make_total_row(items)]
+        ]
+        writer.writerows(rows)
 
     for i, img in enumerate(images, 1):
         shutil.copy2(img, review_dir / f"{date_str}_img_{i:02d}{img.suffix.lower()}")

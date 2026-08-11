@@ -9,6 +9,8 @@ import threading
 from pathlib import Path
 from flask import Blueprint, jsonify, request, current_app
 
+from csv_safety import desanitize_cell, sanitize_cell
+
 bp = Blueprint("items", __name__, url_prefix="/api/items")
 
 FIELDS = ["id", "item", "unit", "category", "subcategory", "synonyms", "notes", "tags"]
@@ -21,7 +23,10 @@ def _load() -> list[dict]:
     if not path.exists():
         return []
     with open(path, newline="", encoding="utf-8") as f:
-        return list(csv.DictReader(f))
+        # aux_items.csv is written with a formula-injection guard (see
+        # csv_safety.py) - undo it here so a protective leading quote never
+        # shows up in the Items page UI or an API response.
+        return [{k: desanitize_cell(v) for k, v in row.items()} for row in csv.DictReader(f)]
 
 
 def _save(rows: list[dict]) -> None:
@@ -29,7 +34,10 @@ def _save(rows: list[dict]) -> None:
     with open(path, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=FIELDS, extrasaction="ignore")
         writer.writeheader()
-        writer.writerows(rows)
+        # Formula-injection guard: every field here is user-editable free
+        # text (item name, notes, synonyms, tags) - sanitized uniformly
+        # rather than trying to enumerate which fields are "safe".
+        writer.writerows([{k: sanitize_cell(v) for k, v in row.items()} for row in rows])
 
 
 def _next_id(rows: list[dict]) -> int:

@@ -71,6 +71,29 @@ def test_writes_require_auth(client, aux_csv):
     assert resp.status_code == 401
 
 
+def test_item_name_with_formula_trigger_char_is_safe_on_disk_and_clean_via_api(client, auth_headers, aux_csv):
+    """Regression for the 2026-08-11 audit finding: aux_items.csv is
+    user-editable free text written straight into a CSV cell with no
+    formula-injection guard. A name starting with =/+/-/@ must (a) be
+    written to the on-disk CSV with a protective leading quote, so opening
+    aux_items.csv directly in Excel is safe, and (b) come back clean (no
+    stray quote) through the API/UI, since _load() undoes the guard on
+    read."""
+    resp = client.post(
+        "/api/items",
+        json={"item": "=cmd|'/c calc'!A1", "unit": "u", "category": "Pantry"},
+        headers=auth_headers,
+    )
+    assert resp.status_code == 201
+    assert resp.get_json()["item"] == "=cmd|'/c calc'!A1"  # clean through the API
+
+    on_disk = aux_csv.read_text(encoding="utf-8")
+    assert "'=cmd|" in on_disk  # guarded on disk
+
+    listed = client.get("/api/items?q=cmd", headers=auth_headers).get_json()
+    assert listed[0]["item"] == "=cmd|'/c calc'!A1"  # still clean after a fresh _load()
+
+
 def test_writes_blocked_in_demo_mode(demo_client):
     resp = demo_client.post("/api/items", json={"item": "X"})
     assert resp.status_code == 403
