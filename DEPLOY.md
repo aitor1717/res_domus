@@ -69,13 +69,12 @@ This command excludes `data/` on purpose, even on the first copy. Run
 VM itself in step 6 instead. If you sync `data/` from your machine, it
 overwrites whatever the VM already has, without warning.
 
-The other excludes matter too, on a repeat sync: `personal/`, `archive/`,
+The other excludes matter too, on a repeat sync. `personal/`, `archive/`,
 `CLAUDE.md`, and stray `audit-report-*.html` files are gitignored local-only
 material (personal notes, design mockups, audit history) with no reason to
-ever leave your machine, and `.env` / `app/config.py` hold your live
-secrets (API keys, Basic Auth credentials, `SECRET_KEY`) — syncing either
-one from your machine would silently overwrite whatever the VM already has
-configured for itself.
+leave your machine. `.env` and `app/config.py` hold your live secrets (API
+keys, Basic Auth credentials, `SECRET_KEY`) — syncing either would silently
+overwrite what the VM already has configured for itself.
 
 ## 5. Configure secrets
 

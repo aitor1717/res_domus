@@ -340,22 +340,17 @@ def run_import(db_path: Path, review_dir: Path) -> dict:
 def rebase_demo_dates(db_path) -> int:
     """If db_path is flagged as demo data (app_settings.demo_data == '1'), shift every
     purchases.datetime forward so the most recent purchase lands on today, preserving
-    the spacing between trips. Without this, a demo snapshot generated once looks
-    increasingly stale the longer it sits unregenerated — e.g. Register's default 7-day
-    filter reads as broken, and 'this month' KPIs/budget/stock-estimate views drift out
-    of range. No-op for real data (untagged) and for demo data that's already current.
+    the spacing between trips. Without this, an unregenerated demo snapshot looks
+    increasingly stale: Register's default 7-day filter reads as empty, and 'this
+    month' KPIs/budget/stock-estimate views drift out of range. No-op for real
+    (untagged) data and for demo data that's already current.
 
-    Also re-keys the budget table's row (if any - only scripts/generate_sample_db.py
-    writes one, seed_demo_data.py never touches this table) to the current
-    'YYYY-MM'. v_budget joins on an EXACT month-string match
-    (`b.month = strftime('%Y-%m', 'now')`), so unlike every other piece of
-    engineered demo realism - which lives on a purchases row and rides along
-    with the shift above for free - a manual budget override is an absolute
-    key with no shifting mechanism of its own. Left alone, it silently stops
-    matching the moment the real calendar rolls past whatever month the DB
-    was generated in, and the ring falls back to the raw baseline average
-    with no error anywhere. Confirmed live: this is exactly what would have
-    happened to the demo VM one month after this fix was written.
+    Also re-keys the budget table's manual-override row (only
+    scripts/generate_sample_db.py writes one) to the current 'YYYY-MM'.
+    v_budget joins on an exact month-string match, and unlike a purchases
+    row, a budget override has no shifting mechanism of its own. Left alone,
+    it stops matching once the calendar rolls past its generation month, and
+    the ring silently falls back to the raw baseline average.
 
     Returns the number of days shifted (0 if none)."""
     import db_settings
