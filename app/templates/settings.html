@@ -26,16 +26,13 @@
   .section-title { font-family: var(--mono); font-size: 9px; letter-spacing: .08em; color: var(--muted); margin-bottom: 14px; }
   /* .status-msg/.ok/.err now shared globally in base.html */
 
-  .import-btn {
-    width: 100%; padding: 10px; background: rgba(255,157,110,.08); border: 1px solid rgba(255,157,110,.25);
-    border-radius: 8px; font-family: var(--mono); font-size: 11px; color: var(--purple);
-    cursor: pointer; transition: background .15s; margin-top: 4px;
-  }
-  .import-btn:hover { background: rgba(255,157,110,.15); }
-
-  /* Import/Export share one box, buttons styled identically */
+  /* Import/Export share one box - both buttons use .save-btn (see below)
+     so they're guaranteed identical, not just coincidentally matching. A
+     separate .import-btn class used to exist here with its own color
+     (--purple) instead of .save-btn's (--orange) - close enough at a
+     glance to look like a styling bug rather than an intentional accent. */
   .db-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 4px; }
-  .db-actions .import-btn, .db-actions .save-btn { flex: 1; min-width: 140px; width: auto; margin-top: 0; text-align: center; }
+  .db-actions .save-btn { flex: 1; min-width: 140px; width: auto; margin-top: 0; text-align: center; }
 
   .attrib-box {
     font-family: var(--mono); font-size: 10px; color: var(--dim2); text-align: center;
@@ -90,7 +87,7 @@
   <div class="card mb">
     <div class="card-label i18n" data-en="DATABASE" data-es="BASE DE DATOS">BASE DE DATOS</div>
     <div class="db-actions">
-      <button class="import-btn i18n" id="importBtn" data-en="reimport now" data-es="reimportar ahora" onclick="runImport()">reimportar ahora</button>
+      <button class="save-btn i18n" id="importBtn" data-en="reimport now" data-es="reimportar ahora" onclick="runImport()">reimportar ahora</button>
       <a class="save-btn i18n" id="exportBtn" data-en="export xlsx" data-es="exportar xlsx" href="/api/settings/export" download style="text-decoration:none;display:inline-block">exportar xlsx</a>
     </div>
     <div class="status-msg" id="importStatus"></div>
